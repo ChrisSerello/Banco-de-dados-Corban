@@ -396,7 +396,7 @@ function TestimonialCTA({ onRegister }) {
         <div style={{ position: "relative" }}>
           <div style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--violet-600)", fontFamily: "var(--mono)", fontWeight: 500, marginBottom: 18 }}>※ Pronto para começar?</div>
           <h2 style={{ fontFamily: "var(--serif)", fontWeight: 400, fontSize: 52, lineHeight: .95, letterSpacing: "-.03em", color: "var(--ink)", margin: "0 0 20px" }}>
-            Seu cadastro<br/><span style={{ fontStyle: "italic", color: "var(--violet-600)" }}>pode estar pronto</span><br/>até sexta-feira.
+            Seu cadastro<br/><span style={{ fontStyle: "italic", color: "var(--violet-600)" }}>pode estar pronto</span><br/>em instantes.
           </h2>
           <p style={{ fontSize: 15, lineHeight: 1.55, color: "var(--ink-60)", margin: "0 0 32px", maxWidth: 440 }}>
             Leva cerca de 12 minutos para preencher. Em até 48h úteis, a gente te liga com a resposta.
