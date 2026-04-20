@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import Landing from "./Landing";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Search, Download, Trash2, Edit2, CheckCircle, XCircle, Clock,
@@ -32,98 +33,36 @@ class ErrorBoundary extends React.Component {
 }
 
 const T = {
-  bg: "#F3F4FF",          // fundo com leve azulado
-  surface: "#FFFFFF",
-  white: "#FFFFFF",
-
-  border: "#E0E2F5",
-  borderHov: "#C7CCF0",
-
-  brand: "#5B21FF",
-  brandMid: "#7C3AED",
-  brandLight: "#E0D4FF",
-  brandPale: "#F5F3FF",
-
-  text: "#020617",
-  textSub: "#4B5563",
-  textMuted: "#9CA3AF",
-
-  success: "#10B981",
-  successBg: "#ECFDF5",
-  warn: "#D97706",
-  warnBg: "#FFFBEB",
-  danger: "#DC2626",
-  dangerBg: "#FEF2F2",
-
-  sidebar: "#0F172A",
-
-  shadow:
-    "0 22px 65px rgba(15,23,42,0.14), 0 0 0 1px rgba(148,163,184,0.18)",
-
-  radius: "18px",
-  radiusLg: "26px",
+  bg:"#F0EEF8", surface:"#FAFAFE", white:"#FFFFFF",
+  border:"#E2DFF2", borderHov:"#C5BFEA",
+  brand:"#5C2ED8", brandMid:"#7C3AED", brandLight:"#EDE9FE", brandPale:"#F3F1FD",
+  text:"#1C1040", textSub:"#5E5490", textMuted:"#9B93C4",
+  success:"#059669", successBg:"#ECFDF5",
+  warn:"#D97706", warnBg:"#FFFBEB",
+  danger:"#DC2626", dangerBg:"#FEF2F2",
+  sidebar:"#1A0F3C",
+  shadow:"0 1px 3px rgba(92,46,216,.05),0 4px 16px rgba(92,46,216,.04)",
+  radius:"12px", radiusLg:"18px",
 };
 
 const G = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Inter+Tight:wght@500;600;700;800&display=swap');
- 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
- 
-  html, body {
-    font-family: 'Inter', system-ui, sans-serif;
-    color: #111827;
-    -webkit-font-smoothing: antialiased;
-    background: #F8F7FF;
-  }
- 
-  body { min-height: 100vh; }
- 
-  input, select, textarea, button {
-    font-family: 'Inter', system-ui, sans-serif;
-  }
- 
-  input, select, textarea {
-    width: 100%;
-    padding: 11px 14px;
-    font-size: 14px;
-    color: #111827;
-    background: #FFFFFF;
-    border: 1.5px solid #E8E6F5;
-    border-radius: 10px;
-    outline: none;
-    transition: border-color .15s ease, box-shadow .15s ease;
-  }
- 
-  input:focus, select:focus, textarea:focus {
-    border-color: #5B47D6;
-    box-shadow: 0 0 0 3px rgba(91,71,214,.1);
-  }
- 
-  input::placeholder, textarea::placeholder { color: #9CA3AF; }
- 
-  select option { background: #fff; color: #111827; }
- 
-  button {
-    cursor: pointer;
-    transition: transform .12s cubic-bezier(.22,1,.36,1), box-shadow .15s ease, opacity .15s;
-  }
-  button:active { transform: scale(.985); }
- 
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: #F3F4F6; }
-  ::-webkit-scrollbar-thumb { background: #D3CFEE; border-radius: 999px; }
- 
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
-  @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-  @keyframes spin   { to { transform: rotate(360deg) } }
-  @keyframes pulse  { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
-  @keyframes fl1    { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
-  @keyframes fl2    { 0%,100% { transform: translateY(0) } 50% { transform: translateY(6px) } }
- 
-  .fade-up { animation: fadeUp .45s cubic-bezier(.22,1,.36,1) both; }
-  .fade-in { animation: fadeIn .3s ease both; }
-  .spin    { animation: spin 1s linear infinite; }
-  .pulse   { animation: pulse 1.8s ease infinite; }
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=DM+Mono:wght@400;500&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{font-family:'DM Sans',system-ui,sans-serif;background:${T.bg};color:${T.text};-webkit-font-smoothing:antialiased}
+  input,select,textarea,button{font-family:inherit}
+  input,select,textarea{width:100%;padding:11px 14px;font-size:14px;color:${T.text};background:${T.white};border:1.5px solid ${T.border};border-radius:${T.radius};outline:none;transition:border-color .15s,box-shadow .15s}
+  input:focus,select:focus,textarea:focus{border-color:${T.brandMid};box-shadow:0 0 0 3px rgba(124,58,237,.10)}
+  input::placeholder,textarea::placeholder{color:${T.textMuted}}
+  button{cursor:pointer;transition:all .15s ease}
+  ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${T.border};border-radius:3px}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .fade-up{animation:fadeUp .35s cubic-bezier(.22,1,.36,1)}
+  .fade-in{animation:fadeIn .25s ease}
+  .spin{animation:spin 1s linear infinite}
+  .pulse{animation:pulse 1.8s ease infinite}
 `;
 
 const fmt = {
@@ -141,81 +80,24 @@ async function lookupCNPJ(cnpj) {
 
 const Spin = ({size=18,color=T.brandMid}) => <Loader2 size={size} color={color} className="spin"/>;
 
-const Btn = ({
-  children,
-  onClick,
-  disabled,
-  loading,
-  variant = "primary",
-  size = "md",
-  full,
-  icon: Icon,
-  style = {},
-}) => {
-  const base = {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    border: "none",
-    fontWeight: 600,
-    borderRadius: T.radius,
-    cursor: "pointer",
-    transition: "all .18s ease",
-    whiteSpace: "nowrap",
-    ...(size === "sm" && { padding: "8px 16px", fontSize: 13 }),
-    ...(size === "md" && { padding: "12px 22px", fontSize: 14 }),
-    ...(size === "lg" && { padding: "14px 30px", fontSize: 15 }),
-    ...(full && { width: "100%" }),
-  };
-
+const Btn = ({children,onClick,disabled,loading,variant="primary",size="md",full,icon:Icon,style={}}) => {
+  const base = {display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,border:"none",fontWeight:600,borderRadius:T.radius,cursor:"pointer",transition:"all .18s ease",whiteSpace:"nowrap",
+    ...(size==="sm"&&{padding:"8px 16px",fontSize:13}),
+    ...(size==="md"&&{padding:"12px 22px",fontSize:14}),
+    ...(size==="lg"&&{padding:"14px 30px",fontSize:15}),
+    ...(full&&{width:"100%"})};
   const V = {
-    primary: {
-      background:
-        disabled || loading
-          ? "#C4B8F0"
-          : `linear-gradient(135deg,${T.brand},${T.brandMid})`,
-      color: "#fff",
-      boxShadow:
-        disabled || loading ? "none" : "0 4px 14px rgba(92,46,216,.28)",
-    },
-    secondary: {
-      background: "transparent",
-      color: T.brandMid,
-      border: `1.5px solid ${T.border}`,
-    },
-    ghost: { background: "transparent", color: T.textSub },
-    danger: { background: T.dangerBg, color: T.danger },
-    success: { background: T.successBg, color: T.success },
+    primary:{background:disabled||loading?"#C4B8F0":`linear-gradient(135deg,${T.brand},${T.brandMid})`,color:"#fff",boxShadow:disabled||loading?"none":"0 4px 14px rgba(92,46,216,.28)"},
+    secondary:{background:"transparent",color:T.brandMid,border:`1.5px solid ${T.border}`},
+    ghost:{background:"transparent",color:T.textSub},
+    danger:{background:T.dangerBg,color:T.danger},
+    success:{background:T.successBg,color:T.success},
   };
-
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled || loading}
-      style={{
-        ...base,
-        ...V[variant],
-        ...style,
-      }}
-      onMouseEnter={e => {
-        if (!disabled && !loading && variant === "primary") {
-          e.currentTarget.style.transform = "translateY(-1px)";
-        }
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.transform = "translateY(0)";
-      }}
-    >
-      {loading ? (
-        <Spin
-          size={15}
-          color={variant === "primary" ? "#fff" : T.brandMid}
-        />
-      ) : Icon ? (
-        <Icon size={15} />
-      ) : null}
-      {children}
+    <button onClick={onClick} disabled={disabled||loading} style={{...base,...V[variant],...style}}
+      onMouseEnter={e=>{if(!disabled&&!loading&&variant==="primary")e.currentTarget.style.transform="translateY(-1px)";}}
+      onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";}}>
+      {loading?<Spin size={15} color={variant==="primary"?"#fff":T.brandMid}/>:Icon?<Icon size={15}/>:null}{children}
     </button>
   );
 };
@@ -263,234 +145,11 @@ const DR = ({label,value,mono}) => value ? (
 ) : null;
 
 const Shell = ({icon:I,title,sub,children}) => (
-  <Card style={{overflow:"hidden"}}><SecHead icon={I} title={title} sub={sub}/><div style={{padding:28}}>{children}</div></Card>
+  <Card style={{overflow:"hidden"}}>
+    <SecHead icon={I} title={title} sub={sub}/>
+    <div style={{padding:28}}>{children}</div>
+  </Card>
 );
-
-// LANDING
-function Landing({ onRegister, onLogin }) {
-  const [count1, setCount1] = React.useState(0);
-  const [count2, setCount2] = React.useState(0);
- 
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      let frame = 0;
-      const total = 72;
-      const iv = setInterval(() => {
-        frame++;
-        const ease = 1 - Math.pow(1 - frame / total, 3);
-        setCount1(Math.floor(ease * 847));
-        setCount2(Math.floor(ease * 324));
-        if (frame >= total) clearInterval(iv);
-      }, 20);
-      return () => clearInterval(iv);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
- 
-  const purple  = '#5B47D6';
-  const purple2 = '#7B6FE8';
-  const purple3 = '#EDE9FF';
-  const purple4 = '#F5F3FF';
-  const border  = '#E8E6F5';
-  const border2 = '#D3CFEE';
-  const ink     = '#111827';
-  const ink2    = '#374151';
-  const muted   = '#6B7280';
-  const faint   = '#9CA3AF';
-  const success = '#059669';
-  const warn    = '#D97706';
-  const tight   = "'Inter Tight', system-ui, sans-serif";
-  const shadow  = '0 4px 16px rgba(91,71,214,.10), 0 2px 6px rgba(0,0,0,.06)';
-  const shadowLg= '0 12px 40px rgba(91,71,214,.12), 0 4px 12px rgba(0,0,0,.06)';
- 
-  const iconStroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' };
- 
-  return (
-    <div style={{ minHeight: '100vh', background: '#F8F7FF', display: 'flex', flexDirection: 'column' }}>
-      <style>{G}</style>
- 
-      {/* ── NAV ── */}
-      <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(16px)', borderBottom: `1px solid ${border}`, padding: '0 64px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 0 #E8E6F5' }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 9, background: `linear-gradient(135deg, ${purple}, ${purple2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(91,71,214,.28)', flexShrink: 0 }}>
-            <Star size={14} color="#fff" fill="#fff" />
-          </div>
-          <span style={{ fontFamily: tight, fontSize: 17, fontWeight: 700, color: ink, letterSpacing: '-.02em' }}>Starcard</span>
-        </div>
- 
-        {/* Botão */}
-        <button
-          onClick={onLogin}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 20px', borderRadius: 8, background: 'transparent', border: `1.5px solid ${border2}`, color: ink2, fontSize: 13, fontWeight: 600, cursor: 'pointer', letterSpacing: '.01em', transition: '.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.background = purple4; e.currentTarget.style.borderColor = purple; e.currentTarget.style.color = purple; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = border2; e.currentTarget.style.color = ink2; }}
-        >
-          <Lock size={12} />
-          Acesso Interno
-        </button>
-      </nav>
- 
-      {/* ── HERO ── */}
-      <div style={{ maxWidth: 1160, margin: '0 auto', padding: '72px 64px 64px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center', width: '100%' }}>
- 
-        {/* Esquerda */}
-        <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
- 
-          {/* Badge */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px 5px 8px', background: purple4, border: `1px solid ${purple3}`, borderRadius: 99, marginBottom: 28 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: purple, boxShadow: `0 0 0 3px rgba(91,71,214,.15)` }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: purple, letterSpacing: '.02em' }}>Correspondente Bancário Autorizado</span>
-          </div>
- 
-          {/* Headline */}
-          <h1 style={{ fontFamily: tight, fontSize: 'clamp(34px,3.8vw,50px)', fontWeight: 800, lineHeight: 1.12, letterSpacing: '-.03em', color: ink, marginBottom: 18 }}>
-            Seja um parceiro<br />
-            financeiro de{' '}
-            <span style={{ color: purple }}>confiança.</span>
-          </h1>
- 
-          {/* Desc */}
-          <p style={{ fontSize: 16, color: muted, lineHeight: 1.75, maxWidth: 440, fontWeight: 400, marginBottom: 36 }}>
-            Cadastro simples, análise especializada e aprovação ágil. Tudo que você precisa para operar como correspondente bancário com segurança.
-          </p>
- 
-          {/* CTAs */}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 48, flexWrap: 'wrap' }}>
-            <button
-              onClick={onRegister}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 28px', borderRadius: 9, background: `linear-gradient(135deg, ${purple}, ${purple2})`, color: '#fff', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(91,71,214,.30)', letterSpacing: '.01em', transition: '.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(91,71,214,.38)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(91,71,214,.30)'; }}
-            >
-              <Plus size={15} />
-              Iniciar Cadastro
-            </button>
-            <button
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '12px 22px', borderRadius: 9, background: '#fff', border: `1.5px solid ${border2}`, color: ink2, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: '.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = purple; e.currentTarget.style.color = purple; e.currentTarget.style.background = purple4; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = border2; e.currentTarget.style.color = ink2; e.currentTarget.style.background = '#fff'; }}
-            >
-              Saiba mais
-              <ChevronRight size={14} />
-            </button>
-          </div>
- 
-          {/* Stats */}
-          <div style={{ display: 'flex', width: '100%', borderTop: `1px solid ${border}`, paddingTop: 28 }}>
-            {[
-              { val: count1.toLocaleString('pt-BR'), lbl: 'Aprovações em 2025' },
-              { val: '94%',  lbl: 'Taxa de aprovação' },
-              { val: '48h',  lbl: 'Prazo de análise' },
-            ].map((s, i) => (
-              <div key={i} style={{ flex: 1, ...(i > 0 && { paddingLeft: 24, borderLeft: `1px solid ${border}`, marginLeft: 0 }), ...(i < 2 && { paddingRight: 24 }) }}>
-                <div style={{ fontFamily: tight, fontSize: 28, fontWeight: 700, color: purple, lineHeight: 1, marginBottom: 4 }}>{s.val}</div>
-                <div style={{ fontSize: 11, color: faint, letterSpacing: '.03em' }}>{s.lbl}</div>
-              </div>
-            ))}
-          </div>
-        </div>
- 
-        {/* Direita — card */}
-        <div className="fade-up" style={{ position: 'relative', animationDelay: '.1s' }}>
- 
-          {/* Mini-card esquerdo */}
-          <div style={{ position: 'absolute', top: -20, left: -44, zIndex: 2, background: '#fff', border: `1px solid ${border}`, borderRadius: 12, padding: '12px 16px', boxShadow: shadow, animation: 'fl1 5s ease-in-out infinite' }}>
-            <div style={{ fontSize: 10, color: faint, fontWeight: 500, marginBottom: 3 }}>Volume mensal</div>
-            <div style={{ fontFamily: tight, fontSize: 17, fontWeight: 700, color: ink }}>R$ 4,2M</div>
-            <div style={{ fontSize: 10, color: success, marginTop: 2, fontWeight: 500 }}>↑ 18% este mês</div>
-          </div>
- 
-          {/* Card principal */}
-          <div style={{ background: '#fff', border: `1px solid ${border}`, borderRadius: 18, padding: 28, boxShadow: shadowLg, position: 'relative', overflow: 'hidden' }}>
-            {/* Barra roxa no topo */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${purple}, ${purple2}, #A78BFA)`, borderRadius: '18px 18px 0 0' }} />
- 
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <span style={{ fontFamily: tight, fontSize: 14, fontWeight: 700, color: ink }}>Starcard Parceiros</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: success, background: 'rgba(5,150,105,.08)', border: '1px solid rgba(5,150,105,.14)', padding: '3px 10px', borderRadius: 99 }}>
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: success, animation: 'pulse 2s infinite', display: 'inline-block' }} />
-                Ao vivo
-              </span>
-            </div>
- 
-            {/* Métrica */}
-            <div style={{ background: purple4, border: `1px solid ${purple3}`, borderRadius: 12, padding: '20px 16px', textAlign: 'center', marginBottom: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: purple2, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 8 }}>Correspondentes ativos</div>
-              <div style={{ fontFamily: tight, fontSize: 42, fontWeight: 800, color: purple, lineHeight: 1, letterSpacing: '-.03em', marginBottom: 8 }}>{count2.toLocaleString('pt-BR')}</div>
-              <div style={{ fontSize: 12, color: success, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>↑ 8 novos este mês</div>
-            </div>
- 
-            {/* Lista */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[
-                { ini: 'LC', nome: 'Lucas Corban — São Paulo',     data: 'Aprovado · 19/04/2025',    ab: purple3, ac: purple, status: 'Ativo',    sb: 'rgba(5,150,105,.1)',   sc: success },
-                { ini: 'MR', nome: 'Marcos Ramos — Rio de Janeiro', data: 'Em análise · 18/04/2025',   ab: purple3, ac: purple, status: 'Revisão',  sb: purple3,                sc: purple },
-                { ini: 'AP', nome: 'Ana Paula — Belo Horizonte',    data: 'Aguardando docs · 17/04',   ab: '#FEF3C7', ac: warn, status: 'Pendente', sb: 'rgba(217,119,6,.1)',   sc: warn },
-              ].map((c, i) => (
-                <div key={i}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#F8F7FF', border: `1px solid ${border}`, borderRadius: 9, transition: '.15s', cursor: 'default' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = border2; e.currentTarget.style.background = purple4; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.background = '#F8F7FF'; }}
-                >
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: c.ab, color: c.ac, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{c.ini}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nome}</div>
-                    <div style={{ fontSize: 10, color: faint, marginTop: 1 }}>{c.data}</div>
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 5, background: c.sb, color: c.sc, flexShrink: 0 }}>{c.status}</span>
-                </div>
-              ))}
-            </div>
-          </div>
- 
-          {/* Mini-card direito */}
-          <div style={{ position: 'absolute', bottom: -16, right: -40, zIndex: 2, background: '#fff', border: `1px solid ${border}`, borderRadius: 12, padding: '12px 16px', boxShadow: shadow, animation: 'fl2 6s ease-in-out infinite' }}>
-            <div style={{ fontSize: 10, color: faint, fontWeight: 500, marginBottom: 3 }}>Tempo médio</div>
-            <div style={{ fontFamily: tight, fontSize: 17, fontWeight: 700, color: ink }}>38h úteis</div>
-            <div style={{ fontSize: 10, color: success, marginTop: 2, fontWeight: 500 }}>Prazo: até 48h</div>
-          </div>
-        </div>
-      </div>
- 
-      {/* ── FEATURES ── */}
-      <div style={{ background: '#fff', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}`, padding: '64px 0' }}>
-        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '0 64px' }}>
-          <div style={{ textAlign: 'center', marginBottom: 44 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: purple, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }}>Por que a Starcard</div>
-            <div style={{ fontFamily: tight, fontSize: 26, fontWeight: 700, color: ink, letterSpacing: '-.02em' }}>Tudo que você precisa para começar</div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 18 }}>
-            {[
-              { icon: <FileText size={18} />, title: 'Formulário guiado',   desc: 'Passo a passo intuitivo com preenchimento automático via CNPJ. Sem documentação desnecessária.' },
-              { icon: <Shield    size={18} />, title: 'Segurança garantida', desc: 'Criptografia ponta a ponta em todos os documentos. Seus dados com padrão bancário.' },
-              { icon: <Clock     size={18} />, title: 'Análise em 48 horas', desc: 'Equipe especializada retorna em até 48 horas úteis após o envio completo do cadastro.' },
-            ].map((f, i) => (
-              <div key={i}
-                style={{ background: '#F8F7FF', border: `1px solid ${border}`, borderRadius: 14, padding: '28px 24px', transition: '.2s', cursor: 'default' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = border2; e.currentTarget.style.background = purple4; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = shadow; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.background = '#F8F7FF'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-              >
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: purple3, display: 'flex', alignItems: 'center', justifyContent: 'center', color: purple, marginBottom: 16 }}>
-                  {f.icon}
-                </div>
-                <div style={{ fontFamily: tight, fontSize: 15, fontWeight: 700, color: ink, marginBottom: 7 }}>{f.title}</div>
-                <div style={{ fontSize: 13, color: muted, lineHeight: 1.65 }}>{f.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
- 
-      {/* ── FOOTER ── */}
-      <div style={{ maxWidth: 1160, margin: '0 auto', padding: '20px 64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-        <span style={{ fontFamily: tight, fontSize: 15, fontWeight: 700, color: ink }}>Starcard</span>
-        <span style={{ fontSize: 12, color: faint }}>corban@starbank.tec.br · (11) 99197-3406 · © 2025</span>
-      </div>
-    </div>
-  );
-}
 
 // LOGIN
 function Login({onBack}) {
