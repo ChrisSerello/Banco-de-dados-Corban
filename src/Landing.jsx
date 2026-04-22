@@ -136,8 +136,8 @@ function DashboardMock() {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {[
             { i: "LC", name: "Lucas Corbanetti", city: "São Paulo", meta: "Aprovado · 21/04", state: "ok" },
-            { i: "MR", name: "Marcos Ribeiro", city: "Rio de Janeiro", meta: "Em análise · 18/04", state: "rev" },
-            { i: "AP", name: "Ana Prado", city: "Belo Horizonte", meta: "Aguardando docs · 17/04", state: "pend" },
+            { i: "MR", name: "Marcos Ribeiro", city: "Sto. Antônio da Platina", meta: "Em análise · 18/04", state: "rev" },
+            { i: "AP", name: "Ana Prado", city: "Sorocaba", meta: "Aguardando docs · 17/04", state: "pend" },
           ].map((p, idx) => <PartnerRow key={idx} {...p} />)}
         </div>
       </div>
@@ -207,7 +207,7 @@ function Hero({ onRegister }) {
 }
 
 function Ticker() {
-  const items = ["Lucas C. · São Paulo · aprovado","Marina R. · Curitiba · 1ª operação","Ana P. · Belo Horizonte · análise","Rafael S. · Fortaleza · aprovado","Bruno K. · Porto Alegre · cadastro enviado","Clara M. · Recife · aprovado","Pedro A. · Salvador · análise","Juliana V. · Manaus · aprovado"];
+  const items = ["Baruei · São Paulo","Embu das Artes · São Paulo","Barcarena · Pará","Redenção · Pará","Cotia · São Paulo","Campos do Jordão · São Paulo","Uberaba · Minas Gerais","Ponta Grossa · Paraná"];
   const all = [...items, ...items];
   return (
     <section style={{ borderTop: "1px solid var(--ink-10)", borderBottom: "1px solid var(--ink-10)", overflow: "hidden", background: "var(--bg)", padding: "22px 0", position: "relative" }}>
