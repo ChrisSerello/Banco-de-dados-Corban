@@ -234,6 +234,7 @@ function Wizard({onDone,onBack}) {
       <header style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"14px 28px",display:"flex",alignItems:"center",gap:14}}>
         <button onClick={onBack} style={{background:"none",border:"none",color:T.textSub,display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:600}}><ArrowLeft size={15}/></button>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:28,height:28,background:`linear-gradient(135deg,${T.brand},${T.brandMid})`,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center"}}><Star size={14} color="#fff" fill="#fff"/></div>
           <span style={{fontSize:14,fontWeight:700,color:T.text}}>Starcard</span>
           <span style={{color:T.border,margin:"0 4px"}}>·</span>
           <span style={{fontSize:13,color:T.textSub}}>Cadastro Correspondente</span>
@@ -447,7 +448,7 @@ function Dashboard({user,onLogout}) {
   });
 
   const showT=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
-  const onStatus=async(id,status,motivo="")=>{await sb.from("corbans").update({status,status_motivo:motivo,aprovado_por_nome:user?.email,aprovado_em:new Date().toISOString()}).eq("id",id);await sb.from("corban_reg_audit").insert([{user_nome:user?.email,action:`corban_${status}`,corban_id:id,detalhes:motivo}]);showT(status==="aprovado"?"Corban aprovado!":"Corban reprovado.");load();if(selected?.id===id)setSelected(p=>({...p,status,status_motivo:motivo}));};
+  const onStatus=async(id,status,motivo="")=>{await sb.from("corbans").update({status,status_motivo:motivo,parecer_decisao:motivo,aprovado_por_nome:user?.email,aprovado_em:new Date().toISOString()}).eq("id",id);await sb.from("corban_reg_audit").insert([{user_nome:user?.email,action:`corban_${status}`,corban_id:id,detalhes:motivo}]);showT(status==="aprovado"?"Corban aprovado!":"Corban reprovado.");load();if(selected?.id===id)setSelected(p=>({...p,status,status_motivo:motivo}));};
   const onDelete=async(id)=>{if(!confirm("Deletar? Ação irreversível."))return;await sb.from("corbans").delete().eq("id",id);showT("Removido.","error");load();if(selected?.id===id)setSelected(null);};
   const onEdit=async(id,u)=>{await sb.from("corbans").update(u).eq("id",id);showT("Atualizado!");load();setSelected(p=>({...p,...u}));};
   const printFicha=c=>{const w=window.open("","_blank");w.document.write(fichaHTML(c));w.document.close();setTimeout(()=>w.print(),500);};
@@ -522,7 +523,9 @@ function Detail({corban,onBack,onStatus,onDelete,onEdit,onPrint}) {
   const [editing,setEditing]=useState(false);
   const [ed,setEd]=useState(corban);
   const [rejectOpen,setRO]=useState(false);
-  const [rejectMotivo,setRM]=useState("");
+  const [decisaoTipo,setDecisaoTipo]=useState("reprovado");
+  const [decisaoParecer,setDP]=useState("");
+  const [parecerErr,setPErr]=useState("");
   const [docs,setDocs]=useState([]);
   const [saving,setSaving]=useState(false);
   const setF=(k,v)=>setEd(f=>({...f,[k]:v}));
@@ -543,24 +546,55 @@ function Detail({corban,onBack,onStatus,onDelete,onEdit,onPrint}) {
           {!editing&&<>
             <Btn onClick={()=>setEditing(true)} variant="secondary" size="sm" icon={Edit2}>Editar</Btn>
             <Btn onClick={()=>onPrint(ed)} variant="secondary" size="sm" icon={Download}>PDF</Btn>
-            {ed.status!=="aprovado"&&<Btn onClick={()=>onStatus(corban.id,"aprovado")} size="sm" style={{background:T.successBg,color:T.success,boxShadow:"none"}} icon={CheckCircle}>Aprovar</Btn>}
-            {ed.status!=="reprovado"&&<Btn onClick={()=>setRO(true)} size="sm" style={{background:T.dangerBg,color:T.danger,boxShadow:"none"}} icon={XCircle}>Reprovar</Btn>}
+            {ed.status!=="aprovado"&&<Btn onClick={()=>{setDecisaoTipo("aprovado");setRO(true);}} size="sm" style={{background:T.successBg,color:T.success,boxShadow:"none"}} icon={CheckCircle}>Aprovar</Btn>}
+            {ed.status!=="reprovado"&&<Btn onClick={()=>{setDecisaoTipo("reprovado");setRO(true);}} size="sm" style={{background:T.dangerBg,color:T.danger,boxShadow:"none"}} icon={XCircle}>Reprovar</Btn>}
             <Btn onClick={()=>onDelete(corban.id)} variant="danger" size="sm" icon={Trash2}>Deletar</Btn>
           </>}
           {editing&&<><Btn onClick={save} loading={saving} size="sm" icon={Check}>Salvar</Btn><Btn onClick={()=>{setEditing(false);setEd(corban);}} variant="secondary" size="sm" icon={X}>Cancelar</Btn></>}
         </div>
       </div>
       {rejectOpen&&(
-        <Card style={{padding:18,marginBottom:18}} className="fade-in">
-          <p style={{fontWeight:700,marginBottom:10,fontSize:14}}>Motivo da reprovação <span style={{color:T.textMuted,fontWeight:400}}>(opcional)</span></p>
-          <textarea value={rejectMotivo} onChange={e=>setRM(e.target.value)} rows={3} placeholder="Descreva o motivo..." style={{marginBottom:10}}/>
+        <Card style={{padding:22,marginBottom:20,border:`2px solid ${decisaoTipo==="aprovado"?"#6EE7B7":"#FCA5A5"}`}} className="fade-in">
+          <p style={{fontWeight:700,marginBottom:4,fontSize:15,color:T.text}}>
+            {decisaoTipo==="aprovado"?"✅ Aprovar Correspondente":"❌ Reprovar Correspondente"}
+          </p>
+          <p style={{fontSize:13,color:T.textSub,marginBottom:14}}>
+            Descreva o motivo da sua decisão. Este parecer ficará registrado na ficha cadastral.
+          </p>
+          <textarea
+            value={decisaoParecer}
+            onChange={e=>{setDP(e.target.value);setPErr("");}}
+            rows={4}
+            placeholder={decisaoTipo==="aprovado"
+              ? "Ex: Documentação completa e verificada. CNPJ ativo, sem restrições. Aprovado para operar na região de São Paulo..."
+              : "Ex: Documentação incompleta. Comprovante de endereço vencido. RG ilegível. Solicitamos reenvio dos documentos..."}
+            style={{marginBottom:8}}
+          />
+          {parecerErr&&<p style={{fontSize:12,color:T.danger,marginBottom:8,fontWeight:600}}>{parecerErr}</p>}
           <div style={{display:"flex",gap:8}}>
-            <Btn onClick={()=>{onStatus(corban.id,"reprovado",rejectMotivo);setRO(false);}} size="sm" style={{background:T.danger,color:"#fff",boxShadow:"none"}} icon={XCircle}>Confirmar</Btn>
-            <Btn onClick={()=>setRO(false)} variant="secondary" size="sm">Cancelar</Btn>
+            <Btn
+              onClick={()=>{
+                if(!decisaoParecer.trim()||decisaoParecer.trim().length<10){
+                  return setPErr("O parecer é obrigatório e deve ter ao menos 10 caracteres.");
+                }
+                onStatus(corban.id,decisaoTipo,decisaoParecer.trim());
+                setRO(false);setDP("");setPErr("");
+              }}
+              size="sm"
+              style={{background:decisaoTipo==="aprovado"?T.success:T.danger,color:"#fff",boxShadow:"none"}}
+              icon={decisaoTipo==="aprovado"?CheckCircle:XCircle}
+            >
+              Confirmar {decisaoTipo==="aprovado"?"Aprovação":"Reprovação"}
+            </Btn>
+            <Btn onClick={()=>{setRO(false);setDP("");setPErr("");}} variant="secondary" size="sm">Cancelar</Btn>
           </div>
         </Card>
       )}
-      {ed.status==="reprovado"&&ed.status_motivo&&<div style={{background:T.dangerBg,borderRadius:12,padding:"10px 14px",marginBottom:16,fontSize:13,color:T.danger}}><strong>Motivo:</strong> {ed.status_motivo}</div>}
+      {ed.status_motivo&&(
+        <div style={{background:ed.status==="aprovado"?T.successBg:T.dangerBg,border:`1px solid ${ed.status==="aprovado"?"#6EE7B7":"#FCA5A5"}`,borderRadius:12,padding:"11px 16px",marginBottom:16,fontSize:13,color:ed.status==="aprovado"?T.success:T.danger}}>
+          <strong>Parecer da {ed.status==="aprovado"?"aprovação":"reprovação"}:</strong> {ed.status_motivo}
+        </div>
+      )}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
         <Card style={{overflow:"hidden"}}>
           <SecHead icon={User} title="Representante Legal"/>
@@ -668,7 +702,110 @@ function AdminLayout({user,onLogout,children}) {
 const Toast=({msg,type})=>{const bg={success:T.success,error:T.danger,warn:T.warn}[type]||T.success;return<div style={{position:"fixed",top:18,right:18,background:bg,color:"#fff",padding:"11px 18px",borderRadius:11,fontWeight:600,fontSize:14,zIndex:9999,display:"flex",alignItems:"center",gap:9,boxShadow:"0 8px 24px rgba(0,0,0,.15)"}}><CheckCircle size={14}/>{msg}</div>;};
 
 function fichaHTML(c) {
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ficha — ${c.pf_nome}</title><style>body{font-family:Arial,sans-serif;color:#111;margin:0;padding:32px;font-size:13px}h1{font-size:20px;color:#5C2ED8;margin-bottom:4px}.sub{font-size:12px;color:#888;margin-bottom:28px}.sec{margin-bottom:20px}.sec-t{font-size:11px;font-weight:700;color:#5C2ED8;text-transform:uppercase;letter-spacing:.6px;padding:7px 12px;background:#F3F1FD;border-radius:8px;margin-bottom:10px}table{width:100%;border-collapse:collapse}td{padding:7px 10px;border-bottom:1px solid #eee}td:first-child{font-weight:600;color:#666;width:38%}.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${c.status==="aprovado"?"#ECFDF5":c.status==="reprovado"?"#FEF2F2":"#FFFBEB"};color:${c.status==="aprovado"?"#059669":c.status==="reprovado"?"#DC2626":"#D97706"}}.footer{margin-top:40px;text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:16px}</style></head><body><h1>★ Starcard — Ficha Cadastral</h1><p class="sub">Emitido em ${new Date().toLocaleDateString("pt-BR")} • Status: <span class="badge">${c.status?.toUpperCase()}</span></p><div class="sec"><div class="sec-t">Representante Legal</div><table><tr><td>Nome</td><td>${c.pf_nome||"—"}</td></tr><tr><td>CPF</td><td>${c.pf_cpf||"—"}</td></tr><tr><td>RG</td><td>${c.pf_rg||"—"}</td></tr><tr><td>Nascimento</td><td>${c.pf_nascimento||"—"}</td></tr><tr><td>Nome da Mãe</td><td>${c.pf_mae||"—"}</td></tr><tr><td>Sexo/Estado Civil</td><td>${c.pf_sexo||"—"} / ${c.pf_estado_civil||"—"}</td></tr><tr><td>Naturalidade</td><td>${c.pf_naturalidade||"—"} ${c.pf_naturalidade_uf||""}</td></tr><tr><td>Endereço</td><td>${c.pf_endereco||"—"} ${c.pf_complemento||""}</td></tr><tr><td>Cidade/UF</td><td>${c.pf_cidade||"—"} / ${c.pf_uf||"—"}</td></tr><tr><td>E-mail</td><td>${c.pf_email||"—"}</td></tr><tr><td>Telefone</td><td>${c.pf_telefone||"—"}</td></tr></table></div><div class="sec"><div class="sec-t">Pessoa Jurídica</div><table><tr><td>Código Parceiro</td><td>${c.codigo_parceiro||"—"}</td></tr><tr><td>Razão Social</td><td>${c.pj_razao_social||"—"}</td></tr><tr><td>CNPJ</td><td>${c.pj_cnpj||"—"}</td></tr><tr><td>Regime</td><td>${c.pj_regime||"—"}</td></tr></table></div><div class="sec"><div class="sec-t">Dados Bancários</div><table><tr><td>Banco</td><td>${c.banco_nome||"—"}</td></tr><tr><td>Agência</td><td>${c.banco_agencia||"—"}</td></tr><tr><td>Conta/Dígito</td><td>${c.banco_conta||"—"}-${c.banco_digito||"—"}</td></tr><tr><td>PIX</td><td>${c.banco_pix||"—"}</td></tr></table></div><div class="footer">Starcard • corban@starbank.tec.br • (11) 99197-3406 • Sujeito à análise.</div></body></html>`;
+  const statusBg  = c.status==="aprovado"?"#ECFDF5":c.status==="reprovado"?"#FEF2F2":"#FFFBEB";
+  const statusClr = c.status==="aprovado"?"#059669":c.status==="reprovado"?"#DC2626":"#D97706";
+  const dataEmit  = new Date().toLocaleDateString("pt-BR");
+  const dataCad   = c.created_at ? new Date(c.created_at).toLocaleDateString("pt-BR") : "—";
+  const dataDecis = c.aprovado_em ? new Date(c.aprovado_em).toLocaleString("pt-BR") : "—";
+  const parecer   = c.parecer_decisao || c.status_motivo || "";
+
+  const css = [
+    "body{font-family:Arial,sans-serif;color:#111;margin:0;padding:32px;font-size:13px}",
+    "h1{font-size:20px;color:#5C2ED8;margin-bottom:4px}",
+    "h2{font-size:16px;color:#5C2ED8;margin-bottom:4px}",
+    ".sub{font-size:12px;color:#888;margin-bottom:28px;border-bottom:1px solid #eee;padding-bottom:10px}",
+    ".sec{margin-bottom:20px}",
+    ".sec-t{font-size:11px;font-weight:700;color:#5C2ED8;text-transform:uppercase;letter-spacing:.6px;padding:7px 12px;background:#F3F1FD;border-radius:8px;margin-bottom:10px}",
+    "table{width:100%;border-collapse:collapse}",
+    "td{padding:7px 10px;border-bottom:1px solid #eee}",
+    "td:first-child{font-weight:600;color:#666;width:38%}",
+    ".badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:"+statusBg+";color:"+statusClr+"}",
+    ".footer{margin-top:40px;text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:16px}",
+    ".parecer-box{border:1px solid #E2DFF2;border-radius:8px;padding:18px 20px;background:#FAFAFE;font-size:14px;line-height:1.7;min-height:120px;white-space:pre-wrap}",
+    ".nota-box{border:1px solid #E2DFF2;border-radius:8px;padding:14px 18px;margin-bottom:20px;background:#F3F1FD;font-size:12px;color:#5C2ED8}",
+    ".assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:60px}",
+    ".ass-linha{border-top:1px solid #000;padding-top:8px;text-align:center;font-size:12px}",
+    ".ass-nome{font-size:11px;color:#888}",
+  ].join("");
+
+  // PAGE 1 — dados cadastrais
+  let html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+    + "<title>Ficha — " + (c.pf_nome||"") + "</title>"
+    + "<style>" + css + "</style></head><body>"
+    + "<h1>&#9733; Starcard &#8212; Ficha Cadastral Correspondente Banc&#225;rio</h1>"
+    + "<p class='sub'>Emitido em " + dataEmit + " &bull; Status: <span class='badge'>" + (c.status||"pendente").toUpperCase() + "</span></p>"
+
+    + "<div class='sec'><div class='sec-t'>Representante Legal</div><table>"
+    + "<tr><td>Nome</td><td>" + (c.pf_nome||"&#8212;") + "</td></tr>"
+    + "<tr><td>CPF</td><td>" + (c.pf_cpf||"&#8212;") + "</td></tr>"
+    + "<tr><td>RG</td><td>" + (c.pf_rg||"&#8212;") + "</td></tr>"
+    + "<tr><td>Nascimento</td><td>" + (c.pf_nascimento||"&#8212;") + "</td></tr>"
+    + "<tr><td>Nome da M&#227;e</td><td>" + (c.pf_mae||"&#8212;") + "</td></tr>"
+    + "<tr><td>Sexo / Estado Civil</td><td>" + (c.pf_sexo||"&#8212;") + " / " + (c.pf_estado_civil||"&#8212;") + "</td></tr>"
+    + "<tr><td>Naturalidade</td><td>" + (c.pf_naturalidade||"&#8212;") + " " + (c.pf_naturalidade_uf||"") + "</td></tr>"
+    + "<tr><td>Endere&#231;o</td><td>" + (c.pf_endereco||"&#8212;") + " " + (c.pf_complemento||"") + "</td></tr>"
+    + "<tr><td>Cidade / UF</td><td>" + (c.pf_cidade||"&#8212;") + " / " + (c.pf_uf||"&#8212;") + "</td></tr>"
+    + "<tr><td>E-mail</td><td>" + (c.pf_email||"&#8212;") + "</td></tr>"
+    + "<tr><td>Telefone</td><td>" + (c.pf_telefone||"&#8212;") + "</td></tr>"
+    + "</table></div>"
+
+    + "<div class='sec'><div class='sec-t'>Pessoa Jur&#237;dica</div><table>"
+    + "<tr><td>C&#243;digo Parceiro</td><td>" + (c.codigo_parceiro||"&#8212;") + "</td></tr>"
+    + "<tr><td>Raz&#227;o Social</td><td>" + (c.pj_razao_social||"&#8212;") + "</td></tr>"
+    + "<tr><td>Nome Fantasia</td><td>" + (c.pj_nome_fantasia||"&#8212;") + "</td></tr>"
+    + "<tr><td>CNPJ</td><td>" + (c.pj_cnpj||"&#8212;") + "</td></tr>"
+    + "<tr><td>Endere&#231;o PJ</td><td>" + (c.pj_endereco||"&#8212;") + "</td></tr>"
+    + "<tr><td>Regime Tribut&#225;rio</td><td>" + (c.pj_regime||"&#8212;") + "</td></tr>"
+    + "</table></div>"
+
+    + "<div class='sec'><div class='sec-t'>Dados Banc&#225;rios</div><table>"
+    + "<tr><td>Banco</td><td>" + (c.banco_nome||"&#8212;") + "</td></tr>"
+    + "<tr><td>Ag&#234;ncia</td><td>" + (c.banco_agencia||"&#8212;") + "</td></tr>"
+    + "<tr><td>Conta / D&#237;gito</td><td>" + (c.banco_conta||"&#8212;") + "-" + (c.banco_digito||"&#8212;") + "</td></tr>"
+    + "<tr><td>Chave PIX</td><td>" + (c.banco_pix||"&#8212;") + "</td></tr>"
+    + "</table></div>"
+
+    + "<div class='footer'>Starcard &bull; corban@starbank.tec.br &bull; (11) 99197-3406</div>";
+
+  // PAGE 2 — parecer (somente se existir decisão)
+  if (parecer) {
+    html += "<div style='page-break-before:always;padding-top:32px'>"
+      + "<h2>Parecer de An&#225;lise Cadastral</h2>"
+      + "<p class='sub'>Segunda via &#8212; Uso interno Starcard</p>"
+
+      + "<div class='sec'><div class='sec-t'>Identifica&#231;&#227;o do Cadastro</div><table>"
+      + "<tr><td>Correspondente</td><td>" + (c.pf_nome||"&#8212;") + "</td></tr>"
+      + "<tr><td>CPF</td><td>" + (c.pf_cpf||"&#8212;") + "</td></tr>"
+      + "<tr><td>CNPJ</td><td>" + (c.pj_cnpj||"&#8212;") + "</td></tr>"
+      + "<tr><td>Raz&#227;o Social</td><td>" + (c.pj_razao_social||"&#8212;") + "</td></tr>"
+      + "<tr><td>Data de Cadastro</td><td>" + dataCad + "</td></tr>"
+      + "</table></div>"
+
+      + "<div class='sec'><div class='sec-t'>Decis&#227;o de An&#225;lise</div><table>"
+      + "<tr><td>Status</td><td><span class='badge'>" + (c.status||"pendente").toUpperCase() + "</span></td></tr>"
+      + "<tr><td>Respons&#225;vel</td><td>" + (c.aprovado_por_nome||"&#8212;") + "</td></tr>"
+      + "<tr><td>Data / Hora da Decis&#227;o</td><td>" + dataDecis + "</td></tr>"
+      + "</table></div>"
+
+      + "<div class='sec'><div class='sec-t'>Parecer e Justificativa</div>"
+      + "<div class='parecer-box'>" + parecer.replace(/</g,"&lt;").replace(/>/g,"&gt;") + "</div></div>"
+
+      + "<div class='nota-box'><strong>Validade:</strong> Este parecer foi emitido no momento da an&#225;lise e integra a ficha cadastral do correspondente. "
+      + "Qualquer altera&#231;&#227;o posterior deve ser registrada no sistema com nova justificativa.</div>"
+
+      + "<div class='assinaturas'>"
+      + "<div><div class='ass-linha'>Assinatura do Respons&#225;vel pela An&#225;lise<br/>"
+      + "<span class='ass-nome'>" + (c.aprovado_por_nome||"___________________________") + "</span></div></div>"
+      + "<div><div class='ass-linha'>Visto &#8212; Gest&#227;o Starcard<br/>"
+      + "<span class='ass-nome'>___________________________</span></div></div>"
+      + "</div>"
+
+      + "<div class='footer'>Documento de uso interno e confidencial &bull; Starcard &bull; " + dataEmit + "</div>"
+      + "</div>";
+  }
+
+  html += "</body></html>";
+  return html;
 }
 
 function AppInner() {
