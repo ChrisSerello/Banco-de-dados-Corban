@@ -234,7 +234,6 @@ function Wizard({onDone,onBack}) {
       <header style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"14px 28px",display:"flex",alignItems:"center",gap:14}}>
         <button onClick={onBack} style={{background:"none",border:"none",color:T.textSub,display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:600}}><ArrowLeft size={15}/></button>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:28,height:28,background:`linear-gradient(135deg,${T.brand},${T.brandMid})`,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center"}}><Star size={14} color="#fff" fill="#fff"/></div>
           <span style={{fontSize:14,fontWeight:700,color:T.text}}>Starcard</span>
           <span style={{color:T.border,margin:"0 4px"}}>·</span>
           <span style={{fontSize:13,color:T.textSub}}>Cadastro Correspondente</span>

@@ -135,7 +135,7 @@ function DashboardMock() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {[
-            { i: "LC", name: "Lucas Corbanetti", city: "São Paulo", meta: "Aprovado · 19/04", state: "ok" },
+            { i: "LC", name: "Lucas Corbanetti", city: "São Paulo", meta: "Aprovado · 21/04", state: "ok" },
             { i: "MR", name: "Marcos Ribeiro", city: "Rio de Janeiro", meta: "Em análise · 18/04", state: "rev" },
             { i: "AP", name: "Ana Prado", city: "Belo Horizonte", meta: "Aguardando docs · 17/04", state: "pend" },
           ].map((p, idx) => <PartnerRow key={idx} {...p} />)}
@@ -158,7 +158,7 @@ function Hero({ onRegister }) {
       <div className="hero-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.05fr) minmax(0,.95fr)", gap: 72, alignItems: "start" }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--violet-600)", fontFamily: "var(--mono)", fontWeight: 500, marginBottom: 32 }}>
-            <span style={{ marginRight: 10 }}>※</span>Seja um parceiro Starcard
+            <span style={{ marginRight: 10 }}></span>Seja um parceiro Starcard
           </div>
           <h1 style={{ fontFamily: "var(--serif)", fontSize: "clamp(56px, 7vw, 104px)", lineHeight: 0.92, letterSpacing: "-.035em", color: "var(--ink)", margin: "0 0 28px", fontWeight: 400 }}>
             O novo jeito<br/>de ser um<br/>
@@ -184,7 +184,7 @@ function Hero({ onRegister }) {
               <span style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--violet-50)", display: "inline-grid", placeItems: "center" }}>
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="var(--violet-600)"><path d="M1 0 L7 4 L1 8z"/></svg>
               </span>
-              Ver como funciona em 90s
+              Ver como funciona em 90s (em breve)
             </button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderTop: "1px solid var(--ink-10)" }}>
@@ -286,7 +286,7 @@ function HowItWorks() {
   return (
     <section id="como" className="landing-section" style={{ padding: "120px 56px", position: "relative" }}>
       <div style={{ textAlign: "center", marginBottom: 80 }}>
-        <div style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--violet-600)", fontFamily: "var(--mono)", fontWeight: 500, marginBottom: 20 }}>※ Como funciona</div>
+        <div style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--violet-600)", fontFamily: "var(--mono)", fontWeight: 500, marginBottom: 20 }}>Como funciona?</div>
         <h2 style={{ fontFamily: "var(--serif)", fontWeight: 400, fontSize: "clamp(40px,5vw,68px)", lineHeight: 1, letterSpacing: "-.03em", color: "var(--ink)", margin: "0 auto", maxWidth: 800 }}>
           Três passos. <span style={{ fontStyle: "italic", color: "var(--violet-600)" }}>Zero burocracia</span>
         </h2>
@@ -365,7 +365,7 @@ function WhyStarcard() {
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 80, alignItems: "end", marginBottom: 64 }}>
           <div>
-            <div style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--violet-600)", fontFamily: "var(--mono)", fontWeight: 500, marginBottom: 20 }}>※ Por que a Starcard</div>
+            <div style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--violet-600)", fontFamily: "var(--mono)", fontWeight: 500, marginBottom: 20 }}>Por que a Starcard?</div>
             <h2 style={{ fontFamily: "var(--serif)", fontWeight: 400, fontSize: "clamp(36px,4vw,56px)", lineHeight: 1, letterSpacing: "-.03em", color: "var(--ink)", margin: 0 }}>
               Tudo que você precisa<br/>para <span style={{ fontStyle: "italic", color: "var(--violet-600)" }}>começar bem</span>.
             </h2>
@@ -394,7 +394,7 @@ function TestimonialCTA({ onRegister }) {
       <div style={{ maxWidth: 1100, margin: "0 auto", background: "linear-gradient(135deg, var(--violet-50) 0%, var(--bg) 70%)", border: "1px solid var(--violet-100)", borderRadius: 28, padding: "64px 56px", display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 56, alignItems: "center", position: "relative", overflow: "hidden" }} className="cta-grid">
         <div style={{ position: "absolute", right: -80, top: -80, width: 340, height: 340, borderRadius: "50%", background: "radial-gradient(circle, color-mix(in oklab, var(--violet-500), transparent 70%), transparent 70%)" }}/>
         <div style={{ position: "relative" }}>
-          <div style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--violet-600)", fontFamily: "var(--mono)", fontWeight: 500, marginBottom: 18 }}>※ Pronto para começar?</div>
+          <div style={{ fontSize: 11, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--violet-600)", fontFamily: "var(--mono)", fontWeight: 500, marginBottom: 18 }}>Pronto para começar?</div>
           <h2 style={{ fontFamily: "var(--serif)", fontWeight: 400, fontSize: 52, lineHeight: .95, letterSpacing: "-.03em", color: "var(--ink)", margin: "0 0 20px" }}>
             Seu cadastro<br/><span style={{ fontStyle: "italic", color: "var(--violet-600)" }}>pode estar pronto</span><br/>em instantes.
           </h2>
@@ -433,9 +433,6 @@ function LandingFooter() {
       <div className="footer-grid" style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: 40 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--ink)", display: "grid", placeItems: "center" }}>
-              <StarGlyph size={14} color="var(--violet-500)" />
-            </div>
             <span style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>Starcard</span>
           </div>
           <p style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--ink-60)", margin: 0, maxWidth: 280 }}>
