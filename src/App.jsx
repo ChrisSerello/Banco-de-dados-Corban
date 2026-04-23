@@ -6,7 +6,7 @@ import {
   ChevronRight, ChevronLeft, Upload, User, CreditCard, FileText,
   LogOut, X, Check, Loader2, Building2, AlertCircle, Shield,
   RefreshCw, Plus, Eye, EyeOff, Building, Star, ArrowLeft,
-  Users, TrendingUp, BadgeCheck, Printer, Lock, Award
+  Users, TrendingUp, BadgeCheck, Printer, Lock, Award, Zap, MapPin
 } from "lucide-react";
 
 const SB_URL = "https://ptxieyftrwjdkbebblwj.supabase.co";
@@ -103,7 +103,12 @@ const Btn = ({children,onClick,disabled,loading,variant="primary",size="md",full
 };
 
 const StatusBadge = ({status}) => {
-  const C={pendente:{l:"Pendente",bg:T.warnBg,c:T.warn,I:Clock},aprovado:{l:"Aprovado",bg:T.successBg,c:T.success,I:CheckCircle},reprovado:{l:"Reprovado",bg:T.dangerBg,c:T.danger,I:XCircle}}[status]||{l:"Pendente",bg:T.warnBg,c:T.warn,I:Clock};
+  const C={
+    pendente: {l:"Pendente",  bg:T.warnBg,   c:T.warn,   I:Clock},
+    aprovado: {l:"Aprovado",  bg:T.successBg, c:T.success, I:CheckCircle},
+    reprovado:{l:"Reprovado", bg:T.dangerBg,  c:T.danger,  I:XCircle},
+    rascunho: {l:"Rascunho",  bg:"#EDE9FE",   c:"#7C3AED", I:FileText},
+  }[status]||{l:"Pendente",bg:T.warnBg,c:T.warn,I:Clock};
   return <span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 11px",borderRadius:20,background:C.bg,color:C.c,fontSize:12,fontWeight:700}}><C.I size={11}/>{C.l}</span>;
 };
 
@@ -190,42 +195,149 @@ function Login({onBack}) {
 }
 
 // WIZARD
-const BLANK={pj_cnpj:"",pj_razao_social:"",pj_nome_fantasia:"",pj_endereco:"",pj_uf:"",pj_cep:"",pj_regime:"MEI",pf_nome:"",pf_cpf:"",pf_rg:"",pf_rg_uf:"SP",pf_nascimento:"",pf_mae:"",pf_naturalidade:"",pf_naturalidade_uf:"",pf_sexo:"FEMININO",pf_nacionalidade:"brasileira",pf_endereco:"",pf_cep:"",pf_complemento:"",pf_cidade:"",pf_uf:"",pf_estado_civil:"CASADO",pf_email:"",pf_telefone:"",banco_nome:"",banco_agencia:"",banco_conta:"",banco_digito:"",banco_pix:""};
-const STEPS=["Empresa","Dados Pessoais","Documentos","Bancários","Revisão"];
+const BLANK={
+  // empresa
+  pj_cnpj:"",pj_razao_social:"",pj_nome_fantasia:"",pj_endereco:"",pj_uf:"",pj_cep:"",pj_regime:"",pj_telefone:"",
+  // perfil comercial
+  tipo_operacao:"",estados_atuacao:[],produtos_atuacao:[],bancos_parceiros:[],producao_mensal:"",
+  // dados pessoais
+  pf_nome:"",pf_cpf:"",pf_rg:"",pf_rg_uf:"SP",pf_nascimento:"",pf_mae:"",
+  pf_naturalidade:"",pf_naturalidade_uf:"",pf_sexo:"FEMININO",pf_nacionalidade:"brasileira",
+  pf_endereco:"",pf_cep:"",pf_complemento:"",pf_cidade:"",pf_uf:"",pf_estado_civil:"CASADO",
+  pf_email:"",pf_telefone:"",
+  // bancário
+  banco_nome:"",banco_agencia:"",banco_conta:"",banco_digito:"",banco_pix:"",
+};
+const STEPS=["Empresa","Perfil","Dados Pessoais","Documentos","Bancários","Revisão"];
+
+// ── Chip multi-select ─────────────────────────────────────────────────────────
+function ChipGroup({options,selected=[],onToggle,cols=4}) {
+  return (
+    <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+      {options.map(opt=>{
+        const active=(selected||[]).includes(opt.key||opt);
+        return (
+          <button key={opt.key||opt} onClick={()=>onToggle(opt.key||opt)}
+            style={{padding:"7px 14px",borderRadius:20,fontSize:13,fontWeight:600,border:`1.5px solid ${active?T.brand:T.border}`,
+              background:active?T.brand:T.surface,color:active?"#fff":T.textSub,cursor:"pointer",transition:"all .15s"}}>
+            {opt.label||opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TypeCard({label,desc,icon:Icon,active,onClick}) {
+  return (
+    <button onClick={onClick} style={{flex:1,minWidth:160,padding:"20px 16px",borderRadius:14,
+      border:`2px solid ${active?T.brand:T.border}`,background:active?T.brandPale:T.surface,
+      cursor:"pointer",textAlign:"center",transition:"all .18s",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+      <div style={{width:44,height:44,borderRadius:12,background:active?T.brand:T.bg,
+        display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <Icon size={20} color={active?"#fff":T.textSub}/>
+      </div>
+      <div>
+        <p style={{fontSize:14,fontWeight:700,color:active?T.brand:T.text,margin:0}}>{label}</p>
+        <p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{desc}</p>
+      </div>
+    </button>
+  );
+}
 
 function Wizard({onDone,onBack}) {
   const [step,setStep]=useState(1);
   const [form,setForm]=useState(BLANK);
   const [docs,setDocs]=useState({});
+  const [corbanId,setCorbanId]=useState(null);
   const [cnpjLoading,setCL]=useState(false);
   const [cnpjOk,setCO]=useState(false);
   const [cnpjErr,setCE]=useState("");
+  const [leadSaving,setLS]=useState(false);
   const [saving,setSaving]=useState(false);
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const toggle=(k,v)=>setForm(f=>({...f,[k]:(f[k]||[]).includes(v)?(f[k]||[]).filter(x=>x!==v):[...(f[k]||[]),v]}));
 
-  const handleCNPJ=async()=>{
+  // Step 1: consulta CNPJ → INSERT rascunho → avança
+  const handleStep1=async()=>{
+    if(!form.pj_telefone) return setCE("Informe o telefone de contato.");
     setCL(true);setCE("");setCO(false);
-    try{
+    try {
       const d=await lookupCNPJ(form.pj_cnpj);
-      setForm(f=>({...f,pj_razao_social:d.razao_social||"",pj_nome_fantasia:d.nome_fantasia||"",pj_endereco:`${d.logradouro||""}, ${d.numero||""}`.trim().replace(/,$/,""),pj_uf:d.uf||"",pj_cep:d.cep?.replace(/\D/g,"").replace(/(\d{5})(\d{3})/,"$1-$2")||"",pj_regime:d.porte==="MEI"?"MEI":f.pj_regime}));
-      setCO(true);setTimeout(()=>setStep(2),600);
-    }catch{setCE("CNPJ não encontrado.");}
-    setCL(false);
+      const updated={...form,
+        pj_razao_social:d.razao_social||"",
+        pj_nome_fantasia:form.pj_nome_fantasia||d.nome_fantasia||"",
+        pj_endereco:`${d.logradouro||""}, ${d.numero||""}`.trim().replace(/,$/,""),
+        pj_uf:d.uf||"",pj_cep:d.cep?.replace(/\D/g,"").replace(/(\d{5})(\d{3})/,"$1-$2")||"",
+      };
+      setForm(updated);setCO(true);
+      // Lead capture: INSERT imediato com status rascunho
+      setLS(true);
+      const {data:lead,error}=await sb.from("corbans").insert([{
+        pj_cnpj:updated.pj_cnpj.replace(/\D/g,""),
+        pj_razao_social:updated.pj_razao_social,
+        pj_nome_fantasia:updated.pj_nome_fantasia,
+        pj_telefone:updated.pj_telefone.replace(/\D/g,""),
+        pj_endereco:updated.pj_endereco,
+        pj_uf:updated.pj_uf,pj_cep:updated.pj_cep.replace(/\D/g,""),
+        pf_nome:"-",pf_cpf:"00000000000",pf_email:"-",pf_telefone:"00000000000",
+        status:"rascunho",
+      }]).select("id").single();
+      if(error) throw error;
+      setCorbanId(lead.id);
+      setLS(false);
+      setTimeout(()=>setStep(2),500);
+    }catch(e){setCE(e.message||"CNPJ não encontrado. Verifique e tente novamente.");}
+    setCL(false);setLS(false);
   };
 
+  // Steps 2-5: UPDATE incremental
+  const updateCorban=async(patch)=>{
+    if(!corbanId) return;
+    await sb.from("corbans").update(patch).eq("id",corbanId);
+  };
+
+  const handleStep2=async()=>{
+    await updateCorban({
+      tipo_operacao:form.tipo_operacao,
+      estados_atuacao:form.estados_atuacao,
+      produtos_atuacao:form.produtos_atuacao,
+      bancos_parceiros:form.bancos_parceiros,
+      producao_mensal:form.producao_mensal,
+    });
+    setStep(3);
+  };
+
+  // Submit final: UPDATE com todos os dados restantes + status pendente
   const submit=async()=>{
     setSaving(true);
     try{
-      const{data:c,error}=await sb.from("corbans").insert([{pf_nome:form.pf_nome,pf_nascimento:form.pf_nascimento||null,pf_sexo:form.pf_sexo,pf_rg:form.pf_rg,pf_rg_uf:form.pf_rg_uf,pf_cpf:form.pf_cpf.replace(/\D/g,""),pf_mae:form.pf_mae,pf_nacionalidade:form.pf_nacionalidade,pf_naturalidade:form.pf_naturalidade,pf_naturalidade_uf:form.pf_naturalidade_uf,pf_endereco:form.pf_endereco,pf_cep:form.pf_cep.replace(/\D/g,""),pf_complemento:form.pf_complemento,pf_cidade:form.pf_cidade,pf_uf:form.pf_uf,pf_estado_civil:form.pf_estado_civil,pf_email:form.pf_email,pf_telefone:form.pf_telefone.replace(/\D/g,""),pj_razao_social:form.pj_razao_social,pj_nome_fantasia:form.pj_nome_fantasia,pj_cnpj:form.pj_cnpj.replace(/\D/g,""),pj_endereco:form.pj_endereco,pj_uf:form.pj_uf,pj_cep:form.pj_cep.replace(/\D/g,""),pj_regime:form.pj_regime,banco_nome:form.banco_nome,banco_agencia:form.banco_agencia,banco_conta:form.banco_conta,banco_digito:form.banco_digito,banco_pix:form.banco_pix,status:"pendente"}]).select().single();
-      if(error)throw error;
+      // Segurança: corbanId deve existir (criado na etapa 1)
+      if(!corbanId) throw new Error("Sessão inválida. Por favor, volte ao início e tente novamente.");
+
+      const {data:updated, error}=await sb.from("corbans").update({
+        pf_nome:form.pf_nome,pf_nascimento:form.pf_nascimento||null,pf_sexo:form.pf_sexo,
+        pf_rg:form.pf_rg,pf_rg_uf:form.pf_rg_uf,pf_cpf:form.pf_cpf.replace(/\D/g,""),
+        pf_mae:form.pf_mae,pf_nacionalidade:form.pf_nacionalidade,
+        pf_naturalidade:form.pf_naturalidade,pf_naturalidade_uf:form.pf_naturalidade_uf,
+        pf_endereco:form.pf_endereco,pf_cep:form.pf_cep.replace(/\D/g,""),
+        pf_complemento:form.pf_complemento,pf_cidade:form.pf_cidade,pf_uf:form.pf_uf,
+        pf_estado_civil:form.pf_estado_civil,pf_email:form.pf_email,
+        pf_telefone:form.pf_telefone.replace(/\D/g,""),
+        banco_nome:form.banco_nome,banco_agencia:form.banco_agencia,
+        banco_conta:form.banco_conta,banco_digito:form.banco_digito,banco_pix:form.banco_pix,
+        status:"pendente",
+      }).eq("id",corbanId).select("id");
+      if(error) throw error;
+      if(!updated||updated.length===0) throw new Error("Não foi possível salvar o cadastro. Tente novamente.");
       for(const[tipo,file]of Object.entries(docs)){
         if(!file)continue;
-        const path=`${c.id}/${tipo}_${Date.now()}.${file.name.split(".").pop()}`;
+        const path=`${corbanId}/${tipo}_${Date.now()}.${file.name.split(".").pop()}`;
         await sb.storage.from("corban-documentos").upload(path,file);
-        await sb.from("corban_documentos").insert([{corban_id:c.id,tipo,nome_arquivo:file.name,storage_path:path,tamanho_bytes:file.size,mime_type:file.type}]);
+        await sb.from("corban_documentos").insert([{corban_id:corbanId,tipo,nome_arquivo:file.name,storage_path:path,tamanho_bytes:file.size,mime_type:file.type}]);
       }
       onDone();
-    }catch(e){alert("Erro: "+e.message);}
+    }catch(e){alert("Erro ao enviar: "+e.message);}
     setSaving(false);
   };
 
@@ -240,61 +352,169 @@ function Wizard({onDone,onBack}) {
           <span style={{fontSize:13,color:T.textSub}}>Cadastro Correspondente</span>
         </div>
       </header>
-      <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"18px 0"}}>
-        <div style={{maxWidth:680,margin:"0 auto",padding:"0 24px",display:"flex",alignItems:"center"}}>
+
+      {/* Stepper */}
+      <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"18px 0",overflowX:"auto"}}>
+        <div style={{minWidth:600,maxWidth:760,margin:"0 auto",padding:"0 24px",display:"flex",alignItems:"center"}}>
           {STEPS.map((label,i)=>{
             const n=i+1,done=n<step,active=n===step;
             return(
               <div key={n} style={{display:"flex",alignItems:"center",flex:i<STEPS.length-1?1:"initial"}}>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
-                  <div style={{width:30,height:30,borderRadius:"50%",background:done?T.brand:active?T.brandPale:T.bg,border:`2px solid ${done?T.brand:active?T.brandMid:T.border}`,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .3s"}}>
-                    {done?<Check size={13} color="#fff"/>:<span style={{fontSize:11,fontWeight:700,color:active?T.brandMid:T.textMuted}}>{n}</span>}
+                  <div style={{width:28,height:28,borderRadius:"50%",background:done?T.brand:active?T.brandPale:T.bg,
+                    border:`2px solid ${done?T.brand:active?T.brandMid:T.border}`,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .3s"}}>
+                    {done?<Check size={12} color="#fff"/>:<span style={{fontSize:10,fontWeight:700,color:active?T.brandMid:T.textMuted}}>{n}</span>}
                   </div>
-                  <span style={{fontSize:10,fontWeight:active?700:500,color:active?T.brand:done?T.brand:T.textMuted,whiteSpace:"nowrap"}}>{label}</span>
+                  <span style={{fontSize:9,fontWeight:active?700:500,color:active?T.brand:done?T.brand:T.textMuted,whiteSpace:"nowrap"}}>{label}</span>
                 </div>
-                {i<STEPS.length-1&&<div style={{flex:1,height:2,background:done?T.brand:T.border,margin:"0 6px",marginBottom:18,transition:"background .3s"}}/>}
+                {i<STEPS.length-1&&<div style={{flex:1,height:2,background:done?T.brand:T.border,margin:"0 4px",marginBottom:16,transition:"background .3s"}}/>}
               </div>
             );
           })}
         </div>
       </div>
+
       <div style={{flex:1,display:"flex",justifyContent:"center",padding:"32px 16px"}}>
-        <div style={{width:"100%",maxWidth:600}} className="fade-up">
-          {step===1&&<WS1 form={form} set={set} loading={cnpjLoading} ok={cnpjOk} err={cnpjErr} onNext={handleCNPJ}/>}
-          {step===2&&<WS2 form={form} set={set} onNext={()=>setStep(3)} onBack={()=>setStep(1)}/>}
-          {step===3&&<WS3 docs={docs} setDocs={setDocs} onNext={()=>setStep(4)} onBack={()=>setStep(2)}/>}
-          {step===4&&<WS4 form={form} set={set} onNext={()=>setStep(5)} onBack={()=>setStep(3)}/>}
-          {step===5&&<WS5 form={form} docs={docs} loading={saving} onSubmit={submit} onBack={()=>setStep(4)}/>}
+        <div style={{width:"100%",maxWidth:620}} className="fade-up">
+          {step===1&&<WS1 form={form} set={set} loading={cnpjLoading||leadSaving} ok={cnpjOk} err={cnpjErr} onNext={handleStep1}/>}
+          {step===2&&<WS2 form={form} set={set} toggle={toggle} onNext={handleStep2} onBack={()=>setStep(1)}/>}
+          {step===3&&<WS3 form={form} set={set} onNext={()=>setStep(4)} onBack={()=>setStep(2)}/>}
+          {step===4&&<WS4 docs={docs} setDocs={setDocs} onNext={()=>setStep(5)} onBack={()=>setStep(3)}/>}
+          {step===5&&<WS5 form={form} set={set} onNext={()=>setStep(6)} onBack={()=>setStep(4)}/>}
+          {step===6&&<WS6 form={form} docs={docs} loading={saving} onSubmit={submit} onBack={()=>setStep(5)}/>}
         </div>
       </div>
     </div>
   );
 }
 
+// ── Step 1: Empresa ───────────────────────────────────────────────────────────
 function WS1({form,set,loading,ok,err,onNext}) {
   return(
     <Shell icon={Building2} title="Dados da Empresa" sub="Informe o CNPJ — preencheremos o restante automaticamente">
       <div style={{display:"flex",flexDirection:"column",gap:18}}>
         <FF label="CNPJ da empresa" name="pj_cnpj" value={form.pj_cnpj} onChange={set} placeholder="00.000.000/0000-00" mask="cnpj" required/>
+        <FF label="Nome Fantasia / Nome Comercial" name="pj_nome_fantasia" value={form.pj_nome_fantasia} onChange={set} placeholder="Como sua empresa é conhecida" required/>
+        <FF label="Telefone de Contato" name="pj_telefone" value={form.pj_telefone} onChange={set} placeholder="(00) 00000-0000" mask="tel" required/>
         {err&&<div style={{display:"flex",alignItems:"center",gap:8,background:T.dangerBg,borderRadius:10,padding:"10px 14px",fontSize:13,color:T.danger}}><AlertCircle size={14}/>{err}</div>}
         {ok&&<div style={{background:T.successBg,border:`1px solid #6EE7B7`,borderRadius:12,padding:14}} className="fade-in">
-          <p style={{fontSize:12,fontWeight:700,color:T.success,marginBottom:4,display:"flex",alignItems:"center",gap:5}}><CheckCircle size={12}/>Empresa encontrada</p>
+          <p style={{fontSize:12,fontWeight:700,color:T.success,marginBottom:4,display:"flex",alignItems:"center",gap:5}}><CheckCircle size={12}/>Empresa encontrada — dados preenchidos</p>
           <p style={{fontSize:14,fontWeight:700,color:T.text}}>{form.pj_razao_social}</p>
           <p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{form.pj_endereco} — {form.pj_uf}</p>
         </div>}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-          <FF label="CEP" name="pj_cep" value={form.pj_cep} onChange={set} placeholder="00000-000" mask="cep"/>
-          <FG label="Regime Tributário"><select value={form.pj_regime} onChange={e=>set("pj_regime",e.target.value)}><option>MEI</option><option>Simples Nacional</option><option>Lucro Presumido</option><option>Lucro Real</option></select></FG>
-        </div>
         <div style={{display:"flex",justifyContent:"flex-end"}}>
-          <Btn onClick={onNext} loading={loading}>{loading?"Consultando...":"Continuar"}<ChevronRight size={15}/></Btn>
+          <Btn onClick={onNext} loading={loading}>
+            {loading?"Consultando e salvando...":"Continuar"}<ChevronRight size={15}/>
+          </Btn>
         </div>
       </div>
     </Shell>
   );
 }
 
-function WS2({form,set,onNext,onBack}) {
+// ── Step 2: Perfil Comercial ──────────────────────────────────────────────────
+const PRODUTOS=[
+  "Consignado INSS","Consignado Público","Consignado Privado",
+  "FGTS / Saque-Aniversário","Crédito Pessoal","CDC","Cartão de Crédito",
+  "Financiamento Imobiliário","Seguros","Portabilidade",
+];
+const BANCOS=[
+  "Caixa","Banco do Brasil","Itaú","Bradesco","Santander",
+  "BMG","Pan","Facta","Daycoval","Safra","C6 Bank","Nubank","Outro",
+];
+const FAIXAS=[
+  "Até R$ 50 mil","R$ 50k – 200k","R$ 200k – 500k","R$ 500k – 1M","Acima de R$ 1M",
+];
+const UFS=["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG",
+           "PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+
+function WS2({form,set,toggle,onNext,onBack}) {
+  const blk = (title,sub,children) => (
+    <div style={{borderBottom:`1px solid ${T.border}`,paddingBottom:20,marginBottom:20}}>
+      <p style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:4}}>{title}</p>
+      {sub&&<p style={{fontSize:12,color:T.textMuted,marginBottom:12}}>{sub}</p>}
+      {children}
+    </div>
+  );
+
+  return(
+    <Shell icon={TrendingUp} title="Perfil do Negócio" sub="Toque nas opções — leva menos de 2 minutos">
+      <div style={{display:"flex",flexDirection:"column",gap:0}}>
+
+        {/* Tipo de operação */}
+        {blk("Como você opera?","",
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            {[
+              {key:"promotora",    label:"Promotora",     desc:"Vendas externas",  icon:Users},
+              {key:"loja_fisica",  label:"Loja Física",   desc:"Atendimento local",icon:Building},
+              {key:"ambos",        label:"Promotora + Loja",desc:"Modelo híbrido", icon:Zap},
+            ].map(t=>(
+              <TypeCard key={t.key} label={t.label} desc={t.desc} icon={t.icon}
+                active={form.tipo_operacao===t.key}
+                onClick={()=>set("tipo_operacao",t.key)}/>
+            ))}
+          </div>
+        )}
+
+        {/* Produção mensal */}
+        {blk("Produção mensal estimada","",
+          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+            {FAIXAS.map(f=>{
+              const active=form.producao_mensal===f;
+              return(
+                <button key={f} onClick={()=>set("producao_mensal",f)}
+                  style={{padding:"9px 16px",borderRadius:10,fontSize:13,fontWeight:600,border:`1.5px solid ${active?T.brand:T.border}`,
+                    background:active?T.brand:T.surface,color:active?"#fff":T.textSub,cursor:"pointer",transition:"all .15s"}}>
+                  {f}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Produtos */}
+        {blk("Produtos que você trabalha","Pode selecionar mais de um",
+          <ChipGroup options={PRODUTOS} selected={form.produtos_atuacao}
+            onToggle={v=>toggle("produtos_atuacao",v)}/>
+        )}
+
+        {/* Bancos/Fintechs */}
+        {blk("Bancos / Fintechs parceiros","Com quais já tem relacionamento",
+          <ChipGroup options={BANCOS} selected={form.bancos_parceiros}
+            onToggle={v=>toggle("bancos_parceiros",v)}/>
+        )}
+
+        {/* Estados */}
+        {blk("Estados de atuação","Onde você já opera ou pretende operar",
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {UFS.map(uf=>{
+              const active=(form.estados_atuacao||[]).includes(uf);
+              return(
+                <button key={uf} onClick={()=>toggle("estados_atuacao",uf)}
+                  style={{width:44,height:36,borderRadius:8,fontSize:12,fontWeight:700,
+                    border:`1.5px solid ${active?T.brand:T.border}`,
+                    background:active?T.brand:T.surface,color:active?"#fff":T.textSub,
+                    cursor:"pointer",transition:"all .12s"}}>
+                  {uf}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{display:"flex",justifyContent:"space-between",paddingTop:4}}>
+          <Btn onClick={onBack} variant="secondary" icon={ChevronLeft}>Voltar</Btn>
+          <Btn onClick={onNext} disabled={!form.tipo_operacao}>
+            Continuar<ChevronRight size={15}/>
+          </Btn>
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+// ── Step 3: Dados Pessoais ────────────────────────────────────────────────────
+function WS3({form,set,onNext,onBack}) {
   return(
     <Shell icon={User} title="Dados Pessoais" sub="Preencha os dados do representante legal">
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
@@ -315,6 +535,7 @@ function WS2({form,set,onNext,onBack}) {
   );
 }
 
+// ── Step 4: Documentos ────────────────────────────────────────────────────────
 const DOC_LIST=[
   {key:"rg_cnh",               label:"RG ou CNH (frente e verso)", req:true},
   {key:"comprovante_endereco", label:"Comprovante de Endereço",    req:true},
@@ -326,14 +547,15 @@ const DOC_LIST=[
   {key:"logo",                 label:"Logo em PNG",                 req:false},
 ];
 
-function WS3({docs,setDocs,onNext,onBack}) {
+function WS4({docs,setDocs,onNext,onBack}) {
   return(
     <Shell icon={FileText} title="Documentos" sub="Envie os documentos para análise">
       <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:22}}>
         {DOC_LIST.map(({key,label,req})=>{
           const file=docs[key];
           return(
-            <label key={key} style={{display:"flex",alignItems:"center",gap:14,padding:"13px 16px",cursor:"pointer",border:`1.5px solid ${file?T.brand:T.border}`,borderRadius:T.radius,background:file?T.brandPale:T.surface,transition:"all .15s"}}>
+            <label key={key} style={{display:"flex",alignItems:"center",gap:14,padding:"13px 16px",cursor:"pointer",
+              border:`1.5px solid ${file?T.brand:T.border}`,borderRadius:T.radius,background:file?T.brandPale:T.surface,transition:"all .15s"}}>
               <div style={{width:36,height:36,borderRadius:10,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:file?T.brand:T.bg}}>
                 {file?<Check size={17} color="#fff"/>:<Upload size={14} color={T.textMuted}/>}
               </div>
@@ -341,7 +563,8 @@ function WS3({docs,setDocs,onNext,onBack}) {
                 <p style={{fontSize:13,fontWeight:600,color:T.text}}>{label}{req&&<span style={{color:T.danger,marginLeft:3}}>*</span>}</p>
                 <p style={{fontSize:11,color:file?T.brandMid:T.textMuted,marginTop:2}}>{file?file.name:"Clique para selecionar"}</p>
               </div>
-              <input type="file" style={{display:"none"}} accept="image/*,.pdf" onChange={e=>{const f=e.target.files?.[0];if(f)setDocs(d=>({...d,[key]:f}));}}/>
+              <input type="file" style={{display:"none"}} accept="image/*,.pdf"
+                onChange={e=>{const f=e.target.files?.[0];if(f)setDocs(d=>({...d,[key]:f}));}}/>
             </label>
           );
         })}
@@ -354,7 +577,8 @@ function WS3({docs,setDocs,onNext,onBack}) {
   );
 }
 
-function WS4({form,set,onNext,onBack}) {
+// ── Step 5: Dados Bancários e Contato ─────────────────────────────────────────
+function WS5({form,set,onNext,onBack}) {
   return(
     <Shell icon={CreditCard} title="Dados Bancários e Contato" sub="Últimas informações para finalizar">
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
@@ -366,11 +590,11 @@ function WS4({form,set,onNext,onBack}) {
         </div>
         <div style={{gridColumn:"span 2"}}><FF label="Chave PIX" name="banco_pix" value={form.banco_pix} onChange={set} placeholder="CPF, e-mail ou telefone"/></div>
         <div style={{gridColumn:"span 2",borderTop:`1px solid ${T.border}`,paddingTop:14,marginTop:4}}>
-          <p style={{fontSize:12,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.6,marginBottom:14}}>Contato e Endereço</p>
+          <p style={{fontSize:12,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.6,marginBottom:14}}>Contato e Endereço do Representante</p>
         </div>
-        <FF label="E-mail" name="pf_email" value={form.pf_email} onChange={set} placeholder="seuemail@email.com" type="email" required/>
-        <FF label="Telefone" name="pf_telefone" value={form.pf_telefone} onChange={set} placeholder="(00) 00000-0000" mask="tel" required/>
-        <div style={{gridColumn:"span 2"}}><FF label="Endereço" name="pf_endereco" value={form.pf_endereco} onChange={set} placeholder="Rua, número"/></div>
+        <FF label="E-mail pessoal" name="pf_email" value={form.pf_email} onChange={set} placeholder="seuemail@email.com" type="email" required/>
+        <FF label="Celular pessoal" name="pf_telefone" value={form.pf_telefone} onChange={set} placeholder="(00) 00000-0000" mask="tel" required/>
+        <div style={{gridColumn:"span 2"}}><FF label="Endereço Residencial" name="pf_endereco" value={form.pf_endereco} onChange={set} placeholder="Rua, número"/></div>
         <FF label="CEP" name="pf_cep" value={form.pf_cep} onChange={set} placeholder="00000-000" mask="cep"/>
         <FF label="Complemento" name="pf_complemento" value={form.pf_complemento} onChange={set} placeholder="Apto, bloco..."/>
         <FF label="Cidade" name="pf_cidade" value={form.pf_cidade} onChange={set} placeholder="Cidade"/>
@@ -385,23 +609,50 @@ function WS4({form,set,onNext,onBack}) {
   );
 }
 
-function WS5({form,docs,loading,onSubmit,onBack}) {
+// ── Step 6: Revisão ───────────────────────────────────────────────────────────
+function WS6({form,docs,loading,onSubmit,onBack}) {
   const dc=Object.values(docs).filter(Boolean).length;
+  const infoBox=(label,val)=>val?<div key={label}><p style={{fontSize:11,color:T.textMuted,marginBottom:2}}>{label}</p><p style={{fontSize:13,fontWeight:600,color:T.text}}>{val}</p></div>:null;
+  const section=(title,rows)=>(
+    <div key={title} style={{border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden"}}>
+      <div style={{background:T.bg,padding:"8px 14px",borderBottom:`1px solid ${T.border}`}}>
+        <p style={{fontSize:12,fontWeight:700,color:T.brandMid,textTransform:"uppercase",letterSpacing:.5}}>{title}</p>
+      </div>
+      <div style={{padding:"10px 14px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 20px",background:T.surface}}>
+        {rows.map(([k,v])=>infoBox(k,v))}
+      </div>
+    </div>
+  );
   return(
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
       <Card>
         <SecHead icon={BadgeCheck} title="Revisão Final" sub="Confirme antes de enviar"/>
         <div style={{padding:22,display:"flex",flexDirection:"column",gap:12}}>
-          {[{t:"Empresa",r:[["Razão Social",form.pj_razao_social],["CNPJ",form.pj_cnpj],["Regime",form.pj_regime]]},{t:"Representante Legal",r:[["Nome",form.pf_nome],["CPF",form.pf_cpf],["RG",form.pf_rg],["Nascimento",form.pf_nascimento],["E-mail",form.pf_email],["Telefone",form.pf_telefone]]},{t:"Dados Bancários",r:[["Banco",form.banco_nome],["Agência",form.banco_agencia],["Conta",`${form.banco_conta}-${form.banco_digito}`],["PIX",form.banco_pix]]}].map(({t,r})=>(
-            <div key={t} style={{border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden"}}>
-              <div style={{background:T.bg,padding:"8px 14px",borderBottom:`1px solid ${T.border}`}}><p style={{fontSize:12,fontWeight:700,color:T.brandMid,textTransform:"uppercase",letterSpacing:.5}}>{t}</p></div>
-              <div style={{padding:"10px 14px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 20px",background:T.surface}}>
-                {r.filter(([,v])=>v).map(([k,v])=><div key={k}><p style={{fontSize:11,color:T.textMuted,marginBottom:2}}>{k}</p><p style={{fontSize:13,fontWeight:600,color:T.text}}>{v}</p></div>)}
-              </div>
-            </div>
-          ))}
-          <div style={{display:"flex",alignItems:"center",gap:9,background:T.brandPale,borderRadius:12,padding:"10px 14px"}}><FileText size={14} color={T.brandMid}/><p style={{fontSize:13,fontWeight:600,color:T.brand}}>{dc} documento(s) anexado(s)</p></div>
-          <div style={{background:T.warnBg,borderRadius:12,padding:"10px 14px",fontSize:13,color:T.warn}}>Após envio, cadastro ficará <strong>Pendente</strong> até análise (até 48h úteis).</div>
+          {section("Empresa",[
+            ["Razão Social",form.pj_razao_social],["CNPJ",form.pj_cnpj],
+            ["Nome Fantasia",form.pj_nome_fantasia],["Telefone",form.pj_telefone],
+          ])}
+          {section("Perfil Comercial",[
+            ["Tipo de Operação",form.tipo_operacao],["Produção Mensal",form.producao_mensal],
+            ["Produtos",form.produtos_atuacao?.join(", ")||"—"],
+            ["Bancos/Fintechs",form.bancos_parceiros?.join(", ")||"—"],
+            ["Estados",form.estados_atuacao?.join(", ")||"—"],
+          ])}
+          {section("Representante Legal",[
+            ["Nome",form.pf_nome],["CPF",form.pf_cpf],["RG",form.pf_rg],
+            ["Nascimento",form.pf_nascimento],["E-mail",form.pf_email],["Celular",form.pf_telefone],
+          ])}
+          {section("Dados Bancários",[
+            ["Banco",form.banco_nome],["Agência",form.banco_agencia],
+            ["Conta",`${form.banco_conta}-${form.banco_digito}`],["PIX",form.banco_pix],
+          ])}
+          <div style={{display:"flex",alignItems:"center",gap:9,background:T.brandPale,borderRadius:12,padding:"10px 14px"}}>
+            <FileText size={14} color={T.brandMid}/>
+            <p style={{fontSize:13,fontWeight:600,color:T.brand}}>{dc} documento(s) anexado(s)</p>
+          </div>
+          <div style={{background:T.warnBg,borderRadius:12,padding:"10px 14px",fontSize:13,color:T.warn}}>
+            Após envio, cadastro fica <strong>Pendente</strong> até análise da equipe Starcard (até 48h úteis).
+          </div>
         </div>
       </Card>
       <div style={{display:"flex",justifyContent:"space-between"}}>
@@ -440,11 +691,20 @@ function Dashboard({user,onLogout}) {
   const load=useCallback(async()=>{setLoading(true);const{data}=await sb.from("corbans").select("*").order("created_at",{ascending:false});setCorbans(data||[]);setLoading(false);},[]);
   useEffect(()=>{load();},[load]);
 
-  const counts={todos:corbans.length,pendente:corbans.filter(c=>c.status==="pendente").length,aprovado:corbans.filter(c=>c.status==="aprovado").length,reprovado:corbans.filter(c=>c.status==="reprovado").length};
-  const filtered=corbans.filter(c=>{
-    const ms=filter==="todos"||c.status===filter;
+  // Separar rascunhos (leads incompletos) dos cadastros submetidos
+  const ativos   = corbans.filter(c=>c.status!=="rascunho");
+  const rascunhos = corbans.filter(c=>c.status==="rascunho");
+  const counts={
+    todos:    ativos.length,
+    pendente: ativos.filter(c=>c.status==="pendente").length,
+    aprovado: ativos.filter(c=>c.status==="aprovado").length,
+    reprovado:ativos.filter(c=>c.status==="reprovado").length,
+    rascunho: rascunhos.length,
+  };
+  const filtered=(filter==="rascunho" ? rascunhos : ativos).filter(c=>{
+    const ms=filter==="todos"||filter==="rascunho"||c.status===filter;
     const q=search.toLowerCase();
-    return ms&&(!q||c.pf_nome?.toLowerCase().includes(q)||c.pj_cnpj?.includes(q)||c.pf_cpf?.includes(q)||c.pj_razao_social?.toLowerCase().includes(q));
+    return ms&&(!q||c.pf_nome?.toLowerCase().includes(q)||c.pj_cnpj?.includes(q)||c.pf_cpf?.includes(q)||c.pj_razao_social?.toLowerCase().includes(q)||c.pj_nome_fantasia?.toLowerCase().includes(q)||c.pj_telefone?.includes(q));
   });
 
   const showT=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
@@ -458,8 +718,8 @@ function Dashboard({user,onLogout}) {
   return(
     <AdminLayout user={user} onLogout={onLogout}>
       {toast&&<Toast {...toast}/>}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:22}}>
-        {[{label:"Total",value:counts.todos,icon:Users,c:T.brandMid,bg:T.brandLight},{label:"Aguardando",value:counts.pendente,icon:Clock,c:T.warn,bg:T.warnBg},{label:"Aprovados",value:counts.aprovado,icon:CheckCircle,c:T.success,bg:T.successBg},{label:"Reprovados",value:counts.reprovado,icon:XCircle,c:T.danger,bg:T.dangerBg}].map(({label,value,icon:Icon,c,bg})=>(
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:22}}>
+        {[{label:"Submetidos",value:counts.todos,icon:Users,c:T.brandMid,bg:T.brandLight},{label:"Aguardando",value:counts.pendente,icon:Clock,c:T.warn,bg:T.warnBg},{label:"Aprovados",value:counts.aprovado,icon:CheckCircle,c:T.success,bg:T.successBg},{label:"Reprovados",value:counts.reprovado,icon:XCircle,c:T.danger,bg:T.dangerBg},{label:"Rascunhos",value:counts.rascunho,icon:FileText,c:"#7C3AED",bg:"#EDE9FE"}].map(({label,value,icon:Icon,c,bg})=>(
           <Card key={label} style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:12}}>
             <div style={{width:42,height:42,background:bg,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon size={20} color={c}/></div>
             <div><p style={{fontSize:26,fontWeight:800,color:T.text,lineHeight:1}}>{value}</p><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{label}</p></div>
@@ -473,9 +733,24 @@ function Dashboard({user,onLogout}) {
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nome, CNPJ, CPF..." style={{paddingLeft:34,height:38}}/>
           </div>
           <div style={{display:"flex",gap:5}}>
-            {["todos","pendente","aprovado","reprovado"].map(s=>(
-              <button key={s} onClick={()=>setFilter(s)} style={{padding:"6px 12px",borderRadius:18,fontSize:12,fontWeight:600,border:"none",background:filter===s?T.brand:T.bg,color:filter===s?"#fff":T.textSub}}>
-                {s.charAt(0).toUpperCase()+s.slice(1)}{s!=="todos"&&` (${counts[s]})`}
+            {[
+              {k:"todos",    l:"Todos"},
+              {k:"pendente", l:"Pendente"},
+              {k:"aprovado", l:"Aprovado"},
+              {k:"reprovado",l:"Reprovado"},
+              {k:"rascunho", l:"Rascunhos"},
+            ].map(({k,l})=>(
+              <button key={k} onClick={()=>setFilter(k)}
+                style={{padding:"6px 12px",borderRadius:18,fontSize:12,fontWeight:600,border:"none",
+                  background:filter===k?T.brand:T.bg,color:filter===k?"#fff":T.textSub,
+                  display:"flex",alignItems:"center",gap:5}}>
+                {l}
+                {k!=="todos"&&counts[k]>0&&(
+                  <span style={{background:filter===k?"rgba(255,255,255,.25)":"rgba(92,46,216,.12)",
+                    color:filter===k?"#fff":T.brandMid,borderRadius:10,padding:"1px 6px",fontSize:11,fontWeight:700}}>
+                    {counts[k]}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -493,11 +768,16 @@ function Dashboard({user,onLogout}) {
                     <td style={{padding:"13px 14px"}}>
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
                         <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.brand},${T.brandMid})`,borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#fff",flexShrink:0}}>{c.pf_nome?.[0]?.toUpperCase()||"?"}</div>
-                        <div><p style={{fontSize:14,fontWeight:600,color:T.text}}>{c.pf_nome||"—"}</p><p style={{fontSize:11,color:T.textMuted}}>{c.pj_razao_social||"—"}</p></div>
+                        <div><p style={{fontSize:14,fontWeight:600,color:T.text}}>
+                          {c.status==="rascunho"?(c.pj_nome_fantasia||c.pj_razao_social||"Sem nome"):(c.pf_nome||"—")}
+                        </p>
+                        <p style={{fontSize:11,color:c.status==="rascunho"?T.brandMid:T.textMuted}}>
+                          {c.status==="rascunho"?"Lead incompleto":(c.pj_razao_social||"—")}
+                        </p></div>
                       </div>
                     </td>
                     <td style={{padding:"13px 14px",fontSize:12,color:T.textSub,fontFamily:"'DM Mono',monospace"}}>{c.pj_cnpj?c.pj_cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,"$1.$2.$3/$4-$5"):"—"}</td>
-                    <td style={{padding:"13px 14px",fontSize:13,color:T.textSub}}>{c.pf_email||"—"}</td>
+                    <td style={{padding:"13px 14px",fontSize:13,color:T.textSub}}>{c.status==="rascunho"?(c.pj_telefone||"—"):( c.pf_email||"—")}</td>
                     <td style={{padding:"13px 14px"}}><StatusBadge status={c.status}/></td>
                     <td style={{padding:"13px 14px",fontSize:12,color:T.textMuted}}>{new Date(c.created_at).toLocaleDateString("pt-BR")}</td>
                     <td style={{padding:"13px 14px"}} onClick={e=>e.stopPropagation()}>
