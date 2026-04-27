@@ -104,10 +104,10 @@ const Btn = ({children,onClick,disabled,loading,variant="primary",size="md",full
 
 const StatusBadge = ({status}) => {
   const C={
-    pendente: {l:"Pendente",  bg:T.warnBg,   c:T.warn,   I:Clock},
-    aprovado: {l:"Aprovado",  bg:T.successBg, c:T.success, I:CheckCircle},
-    reprovado:{l:"Reprovado", bg:T.dangerBg,  c:T.danger,  I:XCircle},
-    rascunho: {l:"Rascunho",  bg:"#EDE9FE",   c:"#7C3AED", I:FileText},
+    pendente: {l:"Pendente",  bg:T.warnBg,    c:T.warn,    I:Clock},
+    aprovado: {l:"Aprovado",  bg:T.successBg,  c:T.success,  I:CheckCircle},
+    reprovado:{l:"Reprovado", bg:T.dangerBg,   c:T.danger,   I:XCircle},
+    rascunho: {l:"Rascunho",  bg:"#EDE9FE",    c:"#7C3AED",  I:FileText},
   }[status]||{l:"Pendente",bg:T.warnBg,c:T.warn,I:Clock};
   return <span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 11px",borderRadius:20,background:C.bg,color:C.c,fontSize:12,fontWeight:700}}><C.I size={11}/>{C.l}</span>;
 };
@@ -142,7 +142,8 @@ const SecHead = ({icon:Icon,title,sub}) => (
   </div>
 );
 
-const DR = ({label,value,mono}) => value ? (
+// FIX 2: DR filtra valores zero/traço (placeholders antigos)
+const DR = ({label,value,mono}) => (value && value !== "00000000000" && value !== "-") ? (
   <div style={{padding:"9px 0",borderBottom:`1px solid ${T.bg}`}}>
     <p style={{fontSize:11,fontWeight:600,color:T.textMuted,textTransform:"uppercase",letterSpacing:.6,marginBottom:3}}>{label}</p>
     <p style={{fontSize:14,fontWeight:500,color:T.text,fontFamily:mono?"'DM Mono',monospace":undefined}}>{value}</p>
@@ -196,22 +197,17 @@ function Login({onBack}) {
 
 // WIZARD
 const BLANK={
-  // empresa
   pj_cnpj:"",pj_razao_social:"",pj_nome_fantasia:"",pj_endereco:"",pj_uf:"",pj_cep:"",pj_regime:"",pj_telefone:"",
-  // perfil comercial
   tipo_operacao:"",estados_atuacao:[],produtos_atuacao:[],bancos_parceiros:[],producao_mensal:"",
-  // dados pessoais
   pf_nome:"",pf_cpf:"",pf_rg:"",pf_rg_uf:"SP",pf_nascimento:"",pf_mae:"",
   pf_naturalidade:"",pf_naturalidade_uf:"",pf_sexo:"FEMININO",pf_nacionalidade:"brasileira",
   pf_endereco:"",pf_cep:"",pf_complemento:"",pf_cidade:"",pf_uf:"",pf_estado_civil:"CASADO",
   pf_email:"",pf_telefone:"",
-  // bancário
   banco_nome:"",banco_agencia:"",banco_conta:"",banco_digito:"",banco_pix:"",
 };
 const STEPS=["Empresa","Perfil","Dados Pessoais","Documentos","Bancários","Revisão"];
 
-// ── Chip multi-select ─────────────────────────────────────────────────────────
-function ChipGroup({options,selected=[],onToggle,cols=4}) {
+function ChipGroup({options,selected=[],onToggle}) {
   return (
     <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
       {options.map(opt=>{
@@ -233,8 +229,7 @@ function TypeCard({label,desc,icon:Icon,active,onClick}) {
     <button onClick={onClick} style={{flex:1,minWidth:160,padding:"20px 16px",borderRadius:14,
       border:`2px solid ${active?T.brand:T.border}`,background:active?T.brandPale:T.surface,
       cursor:"pointer",textAlign:"center",transition:"all .18s",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
-      <div style={{width:44,height:44,borderRadius:12,background:active?T.brand:T.bg,
-        display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{width:44,height:44,borderRadius:12,background:active?T.brand:T.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <Icon size={20} color={active?"#fff":T.textSub}/>
       </div>
       <div>
@@ -258,7 +253,7 @@ function Wizard({onDone,onBack}) {
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   const toggle=(k,v)=>setForm(f=>({...f,[k]:(f[k]||[]).includes(v)?(f[k]||[]).filter(x=>x!==v):[...(f[k]||[]),v]}));
 
-  // Step 1: consulta CNPJ → INSERT rascunho → avança
+  // FIX 1: INSERT sem placeholders falsos
   const handleStep1=async()=>{
     if(!form.pj_telefone) return setCE("Informe o telefone de contato.");
     setCL(true);setCE("");setCO(false);
@@ -271,7 +266,6 @@ function Wizard({onDone,onBack}) {
         pj_uf:d.uf||"",pj_cep:d.cep?.replace(/\D/g,"").replace(/(\d{5})(\d{3})/,"$1-$2")||"",
       };
       setForm(updated);setCO(true);
-      // Lead capture: INSERT imediato com status rascunho
       setLS(true);
       const {data:lead,error}=await sb.from("corbans").insert([{
         pj_cnpj:updated.pj_cnpj.replace(/\D/g,""),
@@ -279,8 +273,9 @@ function Wizard({onDone,onBack}) {
         pj_nome_fantasia:updated.pj_nome_fantasia,
         pj_telefone:updated.pj_telefone.replace(/\D/g,""),
         pj_endereco:updated.pj_endereco,
-        pj_uf:updated.pj_uf,pj_cep:updated.pj_cep.replace(/\D/g,""),
-        pf_nome:"-",pf_cpf:"00000000000",pf_email:"-",pf_telefone:"00000000000",
+        pj_uf:updated.pj_uf,
+        pj_cep:updated.pj_cep.replace(/\D/g,""),
+        pf_nome:"",pf_cpf:"",pf_email:"",pf_telefone:"",
         status:"rascunho",
       }]).select("id").single();
       if(error) throw error;
@@ -291,7 +286,6 @@ function Wizard({onDone,onBack}) {
     setCL(false);setLS(false);
   };
 
-  // Steps 2-5: UPDATE incremental
   const updateCorban=async(patch)=>{
     if(!corbanId) return;
     await sb.from("corbans").update(patch).eq("id",corbanId);
@@ -308,14 +302,11 @@ function Wizard({onDone,onBack}) {
     setStep(3);
   };
 
-  // Submit final: UPDATE com todos os dados restantes + status pendente
   const submit=async()=>{
     setSaving(true);
     try{
-      // Segurança: corbanId deve existir (criado na etapa 1)
-      if(!corbanId) throw new Error("Sessão inválida. Por favor, volte ao início e tente novamente.");
-
-      const {data:updated, error}=await sb.from("corbans").update({
+      if(!corbanId) throw new Error("Sessão inválida. Volte ao início e tente novamente.");
+      const {data:updated,error}=await sb.from("corbans").update({
         pf_nome:form.pf_nome,pf_nascimento:form.pf_nascimento||null,pf_sexo:form.pf_sexo,
         pf_rg:form.pf_rg,pf_rg_uf:form.pf_rg_uf,pf_cpf:form.pf_cpf.replace(/\D/g,""),
         pf_mae:form.pf_mae,pf_nacionalidade:form.pf_nacionalidade,
@@ -329,7 +320,7 @@ function Wizard({onDone,onBack}) {
         status:"pendente",
       }).eq("id",corbanId).select("id");
       if(error) throw error;
-      if(!updated||updated.length===0) throw new Error("Não foi possível salvar o cadastro. Tente novamente.");
+      if(!updated||updated.length===0) throw new Error("Não foi possível salvar. Tente novamente.");
       for(const[tipo,file]of Object.entries(docs)){
         if(!file)continue;
         const path=`${corbanId}/${tipo}_${Date.now()}.${file.name.split(".").pop()}`;
@@ -352,8 +343,6 @@ function Wizard({onDone,onBack}) {
           <span style={{fontSize:13,color:T.textSub}}>Cadastro Correspondente</span>
         </div>
       </header>
-
-      {/* Stepper */}
       <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"18px 0",overflowX:"auto"}}>
         <div style={{minWidth:600,maxWidth:760,margin:"0 auto",padding:"0 24px",display:"flex",alignItems:"center"}}>
           {STEPS.map((label,i)=>{
@@ -373,7 +362,6 @@ function Wizard({onDone,onBack}) {
           })}
         </div>
       </div>
-
       <div style={{flex:1,display:"flex",justifyContent:"center",padding:"32px 16px"}}>
         <div style={{width:"100%",maxWidth:620}} className="fade-up">
           {step===1&&<WS1 form={form} set={set} loading={cnpjLoading||leadSaving} ok={cnpjOk} err={cnpjErr} onNext={handleStep1}/>}
@@ -388,7 +376,6 @@ function Wizard({onDone,onBack}) {
   );
 }
 
-// ── Step 1: Empresa ───────────────────────────────────────────────────────────
 function WS1({form,set,loading,ok,err,onNext}) {
   return(
     <Shell icon={Building2} title="Dados da Empresa" sub="Informe o CNPJ — preencheremos o restante automaticamente">
@@ -403,117 +390,65 @@ function WS1({form,set,loading,ok,err,onNext}) {
           <p style={{fontSize:12,color:T.textMuted,marginTop:2}}>{form.pj_endereco} — {form.pj_uf}</p>
         </div>}
         <div style={{display:"flex",justifyContent:"flex-end"}}>
-          <Btn onClick={onNext} loading={loading}>
-            {loading?"Consultando e salvando...":"Continuar"}<ChevronRight size={15}/>
-          </Btn>
+          <Btn onClick={onNext} loading={loading}>{loading?"Consultando e salvando...":"Continuar"}<ChevronRight size={15}/></Btn>
         </div>
       </div>
     </Shell>
   );
 }
 
-// ── Step 2: Perfil Comercial ──────────────────────────────────────────────────
-const PRODUTOS=[
-  "Consignado INSS","Consignado Público","Consignado Privado",
-  "FGTS / Saque-Aniversário","Crédito Pessoal","CDC","Cartão de Crédito",
-  "Financiamento Imobiliário","Seguros","Portabilidade",
-];
-const BANCOS=[
-  "Caixa","Banco do Brasil","Itaú","Bradesco","Santander",
-  "BMG","Pan","Facta","Daycoval","Safra","C6 Bank","Nubank","Outro",
-];
-const FAIXAS=[
-  "Até R$ 50 mil","R$ 50k – 200k","R$ 200k – 500k","R$ 500k – 1M","Acima de R$ 1M",
-];
-const UFS=["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG",
-           "PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+const PRODUTOS=["Consignado INSS","Consignado Público","Consignado Privado","FGTS / Saque-Aniversário","Crédito Pessoal","CDC","Cartão de Crédito","Financiamento Imobiliário","Seguros","Portabilidade"];
+const BANCOS=["Caixa","Banco do Brasil","Itaú","Bradesco","Santander","BMG","Pan","Facta","Daycoval","Safra","C6 Bank","Nubank","Outro"];
+const FAIXAS=["Até R$ 50 mil","R$ 50k – 200k","R$ 200k – 500k","R$ 500k – 1M","Acima de R$ 1M"];
+const UFS=["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
 function WS2({form,set,toggle,onNext,onBack}) {
-  const blk = (title,sub,children) => (
+  const blk=(title,sub,children)=>(
     <div style={{borderBottom:`1px solid ${T.border}`,paddingBottom:20,marginBottom:20}}>
       <p style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:4}}>{title}</p>
       {sub&&<p style={{fontSize:12,color:T.textMuted,marginBottom:12}}>{sub}</p>}
       {children}
     </div>
   );
-
   return(
     <Shell icon={TrendingUp} title="Perfil do Negócio" sub="Toque nas opções — leva menos de 2 minutos">
       <div style={{display:"flex",flexDirection:"column",gap:0}}>
-
-        {/* Tipo de operação */}
         {blk("Como você opera?","",
           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            {[
-              {key:"promotora",    label:"Promotora",     desc:"Vendas externas",  icon:Users},
-              {key:"loja_fisica",  label:"Loja Física",   desc:"Atendimento local",icon:Building},
-              {key:"ambos",        label:"Promotora + Loja",desc:"Modelo híbrido", icon:Zap},
-            ].map(t=>(
-              <TypeCard key={t.key} label={t.label} desc={t.desc} icon={t.icon}
-                active={form.tipo_operacao===t.key}
-                onClick={()=>set("tipo_operacao",t.key)}/>
+            {[{key:"promotora",label:"Promotora",desc:"Vendas externas",icon:Users},{key:"loja_fisica",label:"Loja Física",desc:"Atendimento local",icon:Building},{key:"ambos",label:"Promotora + Loja",desc:"Modelo híbrido",icon:Zap}].map(t=>(
+              <TypeCard key={t.key} label={t.label} desc={t.desc} icon={t.icon} active={form.tipo_operacao===t.key} onClick={()=>set("tipo_operacao",t.key)}/>
             ))}
           </div>
         )}
-
-        {/* Produção mensal */}
         {blk("Produção mensal estimada","",
           <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-            {FAIXAS.map(f=>{
-              const active=form.producao_mensal===f;
-              return(
-                <button key={f} onClick={()=>set("producao_mensal",f)}
-                  style={{padding:"9px 16px",borderRadius:10,fontSize:13,fontWeight:600,border:`1.5px solid ${active?T.brand:T.border}`,
-                    background:active?T.brand:T.surface,color:active?"#fff":T.textSub,cursor:"pointer",transition:"all .15s"}}>
-                  {f}
-                </button>
-              );
-            })}
+            {FAIXAS.map(f=>{const active=form.producao_mensal===f;return(
+              <button key={f} onClick={()=>set("producao_mensal",f)} style={{padding:"9px 16px",borderRadius:10,fontSize:13,fontWeight:600,border:`1.5px solid ${active?T.brand:T.border}`,background:active?T.brand:T.surface,color:active?"#fff":T.textSub,cursor:"pointer",transition:"all .15s"}}>{f}</button>
+            );})}
           </div>
         )}
-
-        {/* Produtos */}
         {blk("Produtos que você trabalha","Pode selecionar mais de um",
-          <ChipGroup options={PRODUTOS} selected={form.produtos_atuacao}
-            onToggle={v=>toggle("produtos_atuacao",v)}/>
+          <ChipGroup options={PRODUTOS} selected={form.produtos_atuacao} onToggle={v=>toggle("produtos_atuacao",v)}/>
         )}
-
-        {/* Bancos/Fintechs */}
         {blk("Bancos / Fintechs parceiros","Com quais já tem relacionamento",
-          <ChipGroup options={BANCOS} selected={form.bancos_parceiros}
-            onToggle={v=>toggle("bancos_parceiros",v)}/>
+          <ChipGroup options={BANCOS} selected={form.bancos_parceiros} onToggle={v=>toggle("bancos_parceiros",v)}/>
         )}
-
-        {/* Estados */}
         {blk("Estados de atuação","Onde você já opera ou pretende operar",
           <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-            {UFS.map(uf=>{
-              const active=(form.estados_atuacao||[]).includes(uf);
-              return(
-                <button key={uf} onClick={()=>toggle("estados_atuacao",uf)}
-                  style={{width:44,height:36,borderRadius:8,fontSize:12,fontWeight:700,
-                    border:`1.5px solid ${active?T.brand:T.border}`,
-                    background:active?T.brand:T.surface,color:active?"#fff":T.textSub,
-                    cursor:"pointer",transition:"all .12s"}}>
-                  {uf}
-                </button>
-              );
-            })}
+            {UFS.map(uf=>{const active=(form.estados_atuacao||[]).includes(uf);return(
+              <button key={uf} onClick={()=>toggle("estados_atuacao",uf)} style={{width:44,height:36,borderRadius:8,fontSize:12,fontWeight:700,border:`1.5px solid ${active?T.brand:T.border}`,background:active?T.brand:T.surface,color:active?"#fff":T.textSub,cursor:"pointer",transition:"all .12s"}}>{uf}</button>
+            );})}
           </div>
         )}
-
         <div style={{display:"flex",justifyContent:"space-between",paddingTop:4}}>
           <Btn onClick={onBack} variant="secondary" icon={ChevronLeft}>Voltar</Btn>
-          <Btn onClick={onNext} disabled={!form.tipo_operacao}>
-            Continuar<ChevronRight size={15}/>
-          </Btn>
+          <Btn onClick={onNext} disabled={!form.tipo_operacao}>Continuar<ChevronRight size={15}/></Btn>
         </div>
       </div>
     </Shell>
   );
 }
 
-// ── Step 3: Dados Pessoais ────────────────────────────────────────────────────
 function WS3({form,set,onNext,onBack}) {
   return(
     <Shell icon={User} title="Dados Pessoais" sub="Preencha os dados do representante legal">
@@ -535,13 +470,12 @@ function WS3({form,set,onNext,onBack}) {
   );
 }
 
-// ── Step 4: Documentos ────────────────────────────────────────────────────────
 const DOC_LIST=[
   {key:"rg_cnh",               label:"RG ou CNH (frente e verso)", req:true},
   {key:"comprovante_endereco", label:"Comprovante de Endereço",    req:true},
   {key:"cartao_cnpj",          label:"Cartão CNPJ",                req:true},
   {key:"cert_mei",             label:"Certificado MEI / Contrato Social", req:true},
-  {key:"comp_end_estab",       label:"Comprovante do Estabelecimento",req:true},
+  {key:"comp_end_estab",       label:"Comprovante do Estabelecimento", req:true},
   {key:"domicilio_bancario",   label:"Domicílio Bancário",          req:true},
   {key:"certificado",          label:"Certificado FEBRABAN / ANEPS",req:false},
   {key:"logo",                 label:"Logo em PNG",                 req:false},
@@ -554,8 +488,7 @@ function WS4({docs,setDocs,onNext,onBack}) {
         {DOC_LIST.map(({key,label,req})=>{
           const file=docs[key];
           return(
-            <label key={key} style={{display:"flex",alignItems:"center",gap:14,padding:"13px 16px",cursor:"pointer",
-              border:`1.5px solid ${file?T.brand:T.border}`,borderRadius:T.radius,background:file?T.brandPale:T.surface,transition:"all .15s"}}>
+            <label key={key} style={{display:"flex",alignItems:"center",gap:14,padding:"13px 16px",cursor:"pointer",border:`1.5px solid ${file?T.brand:T.border}`,borderRadius:T.radius,background:file?T.brandPale:T.surface,transition:"all .15s"}}>
               <div style={{width:36,height:36,borderRadius:10,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:file?T.brand:T.bg}}>
                 {file?<Check size={17} color="#fff"/>:<Upload size={14} color={T.textMuted}/>}
               </div>
@@ -563,8 +496,7 @@ function WS4({docs,setDocs,onNext,onBack}) {
                 <p style={{fontSize:13,fontWeight:600,color:T.text}}>{label}{req&&<span style={{color:T.danger,marginLeft:3}}>*</span>}</p>
                 <p style={{fontSize:11,color:file?T.brandMid:T.textMuted,marginTop:2}}>{file?file.name:"Clique para selecionar"}</p>
               </div>
-              <input type="file" style={{display:"none"}} accept="image/*,.pdf"
-                onChange={e=>{const f=e.target.files?.[0];if(f)setDocs(d=>({...d,[key]:f}));}}/>
+              <input type="file" style={{display:"none"}} accept="image/*,.pdf" onChange={e=>{const f=e.target.files?.[0];if(f)setDocs(d=>({...d,[key]:f}));}}/>
             </label>
           );
         })}
@@ -577,7 +509,6 @@ function WS4({docs,setDocs,onNext,onBack}) {
   );
 }
 
-// ── Step 5: Dados Bancários e Contato ─────────────────────────────────────────
 function WS5({form,set,onNext,onBack}) {
   return(
     <Shell icon={CreditCard} title="Dados Bancários e Contato" sub="Últimas informações para finalizar">
@@ -609,7 +540,6 @@ function WS5({form,set,onNext,onBack}) {
   );
 }
 
-// ── Step 6: Revisão ───────────────────────────────────────────────────────────
 function WS6({form,docs,loading,onSubmit,onBack}) {
   const dc=Object.values(docs).filter(Boolean).length;
   const infoBox=(label,val)=>val?<div key={label}><p style={{fontSize:11,color:T.textMuted,marginBottom:2}}>{label}</p><p style={{fontSize:13,fontWeight:600,color:T.text}}>{val}</p></div>:null;
@@ -628,24 +558,10 @@ function WS6({form,docs,loading,onSubmit,onBack}) {
       <Card>
         <SecHead icon={BadgeCheck} title="Revisão Final" sub="Confirme antes de enviar"/>
         <div style={{padding:22,display:"flex",flexDirection:"column",gap:12}}>
-          {section("Empresa",[
-            ["Razão Social",form.pj_razao_social],["CNPJ",form.pj_cnpj],
-            ["Nome Fantasia",form.pj_nome_fantasia],["Telefone",form.pj_telefone],
-          ])}
-          {section("Perfil Comercial",[
-            ["Tipo de Operação",form.tipo_operacao],["Produção Mensal",form.producao_mensal],
-            ["Produtos",form.produtos_atuacao?.join(", ")||"—"],
-            ["Bancos/Fintechs",form.bancos_parceiros?.join(", ")||"—"],
-            ["Estados",form.estados_atuacao?.join(", ")||"—"],
-          ])}
-          {section("Representante Legal",[
-            ["Nome",form.pf_nome],["CPF",form.pf_cpf],["RG",form.pf_rg],
-            ["Nascimento",form.pf_nascimento],["E-mail",form.pf_email],["Celular",form.pf_telefone],
-          ])}
-          {section("Dados Bancários",[
-            ["Banco",form.banco_nome],["Agência",form.banco_agencia],
-            ["Conta",`${form.banco_conta}-${form.banco_digito}`],["PIX",form.banco_pix],
-          ])}
+          {section("Empresa",[["Razão Social",form.pj_razao_social],["CNPJ",form.pj_cnpj],["Nome Fantasia",form.pj_nome_fantasia],["Telefone",form.pj_telefone]])}
+          {section("Perfil Comercial",[["Tipo de Operação",form.tipo_operacao],["Produção Mensal",form.producao_mensal],["Produtos",form.produtos_atuacao?.join(", ")||"—"],["Bancos/Fintechs",form.bancos_parceiros?.join(", ")||"—"],["Estados",form.estados_atuacao?.join(", ")||"—"]])}
+          {section("Representante Legal",[["Nome",form.pf_nome],["CPF",form.pf_cpf],["RG",form.pf_rg],["Nascimento",form.pf_nascimento],["E-mail",form.pf_email],["Celular",form.pf_telefone]])}
+          {section("Dados Bancários",[["Banco",form.banco_nome],["Agência",form.banco_agencia],["Conta",`${form.banco_conta}-${form.banco_digito}`],["PIX",form.banco_pix]])}
           <div style={{display:"flex",alignItems:"center",gap:9,background:T.brandPale,borderRadius:12,padding:"10px 14px"}}>
             <FileText size={14} color={T.brandMid}/>
             <p style={{fontSize:13,fontWeight:600,color:T.brand}}>{dc} documento(s) anexado(s)</p>
@@ -691,9 +607,8 @@ function Dashboard({user,onLogout}) {
   const load=useCallback(async()=>{setLoading(true);const{data}=await sb.from("corbans").select("*").order("created_at",{ascending:false});setCorbans(data||[]);setLoading(false);},[]);
   useEffect(()=>{load();},[load]);
 
-  // Separar rascunhos (leads incompletos) dos cadastros submetidos
-  const ativos   = corbans.filter(c=>c.status!=="rascunho");
-  const rascunhos = corbans.filter(c=>c.status==="rascunho");
+  const ativos=corbans.filter(c=>c.status!=="rascunho");
+  const rascunhos=corbans.filter(c=>c.status==="rascunho");
   const counts={
     todos:    ativos.length,
     pendente: ativos.filter(c=>c.status==="pendente").length,
@@ -701,14 +616,20 @@ function Dashboard({user,onLogout}) {
     reprovado:ativos.filter(c=>c.status==="reprovado").length,
     rascunho: rascunhos.length,
   };
-  const filtered=(filter==="rascunho" ? rascunhos : ativos).filter(c=>{
+  const filtered=(filter==="rascunho"?rascunhos:ativos).filter(c=>{
     const ms=filter==="todos"||filter==="rascunho"||c.status===filter;
     const q=search.toLowerCase();
     return ms&&(!q||c.pf_nome?.toLowerCase().includes(q)||c.pj_cnpj?.includes(q)||c.pf_cpf?.includes(q)||c.pj_razao_social?.toLowerCase().includes(q)||c.pj_nome_fantasia?.toLowerCase().includes(q)||c.pj_telefone?.includes(q));
   });
 
   const showT=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
-  const onStatus=async(id,status,motivo="")=>{await sb.from("corbans").update({status,status_motivo:motivo,parecer_decisao:motivo,aprovado_por_nome:user?.email,aprovado_em:new Date().toISOString()}).eq("id",id);await sb.from("corban_reg_audit").insert([{user_nome:user?.email,action:`corban_${status}`,corban_id:id,detalhes:motivo}]);showT(status==="aprovado"?"Corban aprovado!":"Corban reprovado.");load();if(selected?.id===id)setSelected(p=>({...p,status,status_motivo:motivo}));};
+  const onStatus=async(id,status,motivo="")=>{
+    await sb.from("corbans").update({status,status_motivo:motivo,parecer_decisao:motivo,aprovado_por_nome:user?.email,aprovado_em:new Date().toISOString()}).eq("id",id);
+    await sb.from("corban_reg_audit").insert([{user_nome:user?.email,action:`corban_${status}`,corban_id:id,detalhes:motivo}]);
+    showT(status==="aprovado"?"Corban aprovado!":"Corban reprovado.");
+    load();
+    if(selected?.id===id)setSelected(p=>({...p,status,status_motivo:motivo}));
+  };
   const onDelete=async(id)=>{if(!confirm("Deletar? Ação irreversível."))return;await sb.from("corbans").delete().eq("id",id);showT("Removido.","error");load();if(selected?.id===id)setSelected(null);};
   const onEdit=async(id,u)=>{await sb.from("corbans").update(u).eq("id",id);showT("Atualizado!");load();setSelected(p=>({...p,...u}));};
   const printFicha=c=>{const w=window.open("","_blank");w.document.write(fichaHTML(c));w.document.close();setTimeout(()=>w.print(),500);};
@@ -719,7 +640,13 @@ function Dashboard({user,onLogout}) {
     <AdminLayout user={user} onLogout={onLogout}>
       {toast&&<Toast {...toast}/>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:22}}>
-        {[{label:"Submetidos",value:counts.todos,icon:Users,c:T.brandMid,bg:T.brandLight},{label:"Aguardando",value:counts.pendente,icon:Clock,c:T.warn,bg:T.warnBg},{label:"Aprovados",value:counts.aprovado,icon:CheckCircle,c:T.success,bg:T.successBg},{label:"Reprovados",value:counts.reprovado,icon:XCircle,c:T.danger,bg:T.dangerBg},{label:"Rascunhos",value:counts.rascunho,icon:FileText,c:"#7C3AED",bg:"#EDE9FE"}].map(({label,value,icon:Icon,c,bg})=>(
+        {[
+          {label:"Submetidos", value:counts.todos,     icon:Users,         c:T.brandMid, bg:T.brandLight},
+          {label:"Aguardando", value:counts.pendente,  icon:Clock,         c:T.warn,     bg:T.warnBg},
+          {label:"Aprovados",  value:counts.aprovado,  icon:CheckCircle,   c:T.success,  bg:T.successBg},
+          {label:"Reprovados", value:counts.reprovado, icon:XCircle,       c:T.danger,   bg:T.dangerBg},
+          {label:"Rascunhos",  value:counts.rascunho,  icon:FileText,      c:"#7C3AED",  bg:"#EDE9FE"},
+        ].map(({label,value,icon:Icon,c,bg})=>(
           <Card key={label} style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:12}}>
             <div style={{width:42,height:42,background:bg,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon size={20} color={c}/></div>
             <div><p style={{fontSize:26,fontWeight:800,color:T.text,lineHeight:1}}>{value}</p><p style={{fontSize:12,color:T.textMuted,marginTop:3}}>{label}</p></div>
@@ -730,26 +657,14 @@ function Dashboard({user,onLogout}) {
         <div style={{padding:"14px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
           <div style={{position:"relative",flex:1,minWidth:200}}>
             <Search size={14} color={T.textMuted} style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)"}}/>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nome, CNPJ, CPF..." style={{paddingLeft:34,height:38}}/>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nome, CNPJ, CPF, telefone..." style={{paddingLeft:34,height:38}}/>
           </div>
           <div style={{display:"flex",gap:5}}>
-            {[
-              {k:"todos",    l:"Todos"},
-              {k:"pendente", l:"Pendente"},
-              {k:"aprovado", l:"Aprovado"},
-              {k:"reprovado",l:"Reprovado"},
-              {k:"rascunho", l:"Rascunhos"},
-            ].map(({k,l})=>(
-              <button key={k} onClick={()=>setFilter(k)}
-                style={{padding:"6px 12px",borderRadius:18,fontSize:12,fontWeight:600,border:"none",
-                  background:filter===k?T.brand:T.bg,color:filter===k?"#fff":T.textSub,
-                  display:"flex",alignItems:"center",gap:5}}>
+            {[{k:"todos",l:"Todos"},{k:"pendente",l:"Pendente"},{k:"aprovado",l:"Aprovado"},{k:"reprovado",l:"Reprovado"},{k:"rascunho",l:"Rascunhos"}].map(({k,l})=>(
+              <button key={k} onClick={()=>setFilter(k)} style={{padding:"6px 12px",borderRadius:18,fontSize:12,fontWeight:600,border:"none",background:filter===k?T.brand:T.bg,color:filter===k?"#fff":T.textSub,display:"flex",alignItems:"center",gap:5}}>
                 {l}
                 {k!=="todos"&&counts[k]>0&&(
-                  <span style={{background:filter===k?"rgba(255,255,255,.25)":"rgba(92,46,216,.12)",
-                    color:filter===k?"#fff":T.brandMid,borderRadius:10,padding:"1px 6px",fontSize:11,fontWeight:700}}>
-                    {counts[k]}
-                  </span>
+                  <span style={{background:filter===k?"rgba(255,255,255,.25)":"rgba(92,46,216,.12)",color:filter===k?"#fff":T.brandMid,borderRadius:10,padding:"1px 6px",fontSize:11,fontWeight:700}}>{counts[k]}</span>
                 )}
               </button>
             ))}
@@ -761,23 +676,31 @@ function Dashboard({user,onLogout}) {
         :(
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{background:T.bg}}>{["Correspondente","CNPJ","E-mail","Status","Data","Ações"].map(h=><th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+              <thead><tr style={{background:T.bg}}>
+                {["Correspondente","CNPJ",filter==="rascunho"?"Telefone":"E-mail","Status","Data","Ações"].map(h=>(
+                  <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap"}}>{h}</th>
+                ))}
+              </tr></thead>
               <tbody>
                 {filtered.map((c,i)=>(
                   <tr key={c.id} style={{borderTop:`1px solid ${T.border}`,cursor:"pointer",background:i%2===0?T.surface:"#F6F4FC"}} onClick={()=>setSelected(c)} onMouseEnter={e=>e.currentTarget.style.background=T.brandPale} onMouseLeave={e=>e.currentTarget.style.background=i%2===0?T.surface:"#F6F4FC"}>
                     <td style={{padding:"13px 14px"}}>
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
-                        <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.brand},${T.brandMid})`,borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#fff",flexShrink:0}}>{c.pf_nome?.[0]?.toUpperCase()||"?"}</div>
-                        <div><p style={{fontSize:14,fontWeight:600,color:T.text}}>
-                          {c.status==="rascunho"?(c.pj_nome_fantasia||c.pj_razao_social||"Sem nome"):(c.pf_nome||"—")}
-                        </p>
-                        <p style={{fontSize:11,color:c.status==="rascunho"?T.brandMid:T.textMuted}}>
-                          {c.status==="rascunho"?"Lead incompleto":(c.pj_razao_social||"—")}
-                        </p></div>
+                        <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.brand},${T.brandMid})`,borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#fff",flexShrink:0}}>
+                          {c.status==="rascunho"?(c.pj_nome_fantasia?.[0]||"?"):(c.pf_nome?.[0]?.toUpperCase()||"?")}
+                        </div>
+                        <div>
+                          <p style={{fontSize:14,fontWeight:600,color:T.text}}>
+                            {c.status==="rascunho"?(c.pj_nome_fantasia||c.pj_razao_social||"Sem nome"):(c.pf_nome||"—")}
+                          </p>
+                          <p style={{fontSize:11,color:c.status==="rascunho"?T.brandMid:T.textMuted}}>
+                            {c.status==="rascunho"?"Lead incompleto":(c.pj_razao_social||"—")}
+                          </p>
+                        </div>
                       </div>
                     </td>
                     <td style={{padding:"13px 14px",fontSize:12,color:T.textSub,fontFamily:"'DM Mono',monospace"}}>{c.pj_cnpj?c.pj_cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,"$1.$2.$3/$4-$5"):"—"}</td>
-                    <td style={{padding:"13px 14px",fontSize:13,color:T.textSub}}>{c.status==="rascunho"?(c.pj_telefone||"—"):( c.pf_email||"—")}</td>
+                    <td style={{padding:"13px 14px",fontSize:13,color:T.textSub}}>{c.status==="rascunho"?(c.pj_telefone||"—"):(c.pf_email||"—")}</td>
                     <td style={{padding:"13px 14px"}}><StatusBadge status={c.status}/></td>
                     <td style={{padding:"13px 14px",fontSize:12,color:T.textMuted}}>{new Date(c.created_at).toLocaleDateString("pt-BR")}</td>
                     <td style={{padding:"13px 14px"}} onClick={e=>e.stopPropagation()}>
@@ -818,7 +741,9 @@ function Detail({corban,onBack,onStatus,onDelete,onEdit,onPrint}) {
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <button onClick={onBack} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:9,padding:"8px 14px",display:"flex",alignItems:"center",gap:7,fontSize:13,fontWeight:600,color:T.textSub}}><ArrowLeft size={14}/> Voltar</button>
           <div>
-            <h2 style={{fontSize:19,fontWeight:800,color:T.text}}>{corban.pf_nome}</h2>
+            <h2 style={{fontSize:19,fontWeight:800,color:T.text}}>
+              {ed.status==="rascunho"?(ed.pj_nome_fantasia||ed.pj_razao_social||"Lead incompleto"):(corban.pf_nome||"—")}
+            </h2>
             <div style={{display:"flex",alignItems:"center",gap:8,marginTop:3}}><StatusBadge status={ed.status}/><span style={{fontSize:12,color:T.textMuted}}>{new Date(corban.created_at).toLocaleDateString("pt-BR")}</span></div>
           </div>
         </div>
@@ -835,35 +760,18 @@ function Detail({corban,onBack,onStatus,onDelete,onEdit,onPrint}) {
       </div>
       {rejectOpen&&(
         <Card style={{padding:22,marginBottom:20,border:`2px solid ${decisaoTipo==="aprovado"?"#6EE7B7":"#FCA5A5"}`}} className="fade-in">
-          <p style={{fontWeight:700,marginBottom:4,fontSize:15,color:T.text}}>
-            {decisaoTipo==="aprovado"?"✅ Aprovar Correspondente":"❌ Reprovar Correspondente"}
-          </p>
-          <p style={{fontSize:13,color:T.textSub,marginBottom:14}}>
-            Descreva o motivo da sua decisão. Este parecer ficará registrado na ficha cadastral.
-          </p>
-          <textarea
-            value={decisaoParecer}
-            onChange={e=>{setDP(e.target.value);setPErr("");}}
-            rows={4}
-            placeholder={decisaoTipo==="aprovado"
-              ? "Ex: Documentação completa e verificada. CNPJ ativo, sem restrições. Aprovado para operar na região de São Paulo..."
-              : "Ex: Documentação incompleta. Comprovante de endereço vencido. RG ilegível. Solicitamos reenvio dos documentos..."}
-            style={{marginBottom:8}}
-          />
+          <p style={{fontWeight:700,marginBottom:4,fontSize:15,color:T.text}}>{decisaoTipo==="aprovado"?"✅ Aprovar Correspondente":"❌ Reprovar Correspondente"}</p>
+          <p style={{fontSize:13,color:T.textSub,marginBottom:14}}>Descreva o motivo da sua decisão. Este parecer ficará registrado na ficha cadastral.</p>
+          <textarea value={decisaoParecer} onChange={e=>{setDP(e.target.value);setPErr("");}} rows={4}
+            placeholder={decisaoTipo==="aprovado"?"Ex: Documentação completa e verificada. CNPJ ativo, sem restrições...":"Ex: Documentação incompleta. Comprovante vencido..."}
+            style={{marginBottom:8}}/>
           {parecerErr&&<p style={{fontSize:12,color:T.danger,marginBottom:8,fontWeight:600}}>{parecerErr}</p>}
           <div style={{display:"flex",gap:8}}>
-            <Btn
-              onClick={()=>{
-                if(!decisaoParecer.trim()||decisaoParecer.trim().length<10){
-                  return setPErr("O parecer é obrigatório e deve ter ao menos 10 caracteres.");
-                }
-                onStatus(corban.id,decisaoTipo,decisaoParecer.trim());
-                setRO(false);setDP("");setPErr("");
-              }}
-              size="sm"
-              style={{background:decisaoTipo==="aprovado"?T.success:T.danger,color:"#fff",boxShadow:"none"}}
-              icon={decisaoTipo==="aprovado"?CheckCircle:XCircle}
-            >
+            <Btn onClick={()=>{
+              if(!decisaoParecer.trim()||decisaoParecer.trim().length<10) return setPErr("O parecer é obrigatório e deve ter ao menos 10 caracteres.");
+              onStatus(corban.id,decisaoTipo,decisaoParecer.trim());
+              setRO(false);setDP("");setPErr("");
+            }} size="sm" style={{background:decisaoTipo==="aprovado"?T.success:T.danger,color:"#fff",boxShadow:"none"}} icon={decisaoTipo==="aprovado"?CheckCircle:XCircle}>
               Confirmar {decisaoTipo==="aprovado"?"Aprovação":"Reprovação"}
             </Btn>
             <Btn onClick={()=>{setRO(false);setDP("");setPErr("");}} variant="secondary" size="sm">Cancelar</Btn>
@@ -905,10 +813,11 @@ function Detail({corban,onBack,onStatus,onDelete,onEdit,onPrint}) {
                   <FF label="Razão Social" name="pj_razao_social" value={ed.pj_razao_social} onChange={setF}/>
                   <FF label="Nome Fantasia" name="pj_nome_fantasia" value={ed.pj_nome_fantasia} onChange={setF}/>
                   <FF label="CNPJ" name="pj_cnpj" value={ed.pj_cnpj} onChange={setF} mask="cnpj"/>
+                  <FF label="Telefone" name="pj_telefone" value={ed.pj_telefone} onChange={setF} mask="tel"/>
                   <FF label="Regime" name="pj_regime" value={ed.pj_regime} onChange={setF}/>
                 </div>
               ):(
-                <><DR label="Código Parceiro" value={ed.codigo_parceiro||"—"}/><DR label="Razão Social" value={ed.pj_razao_social}/><DR label="Nome Fantasia" value={ed.pj_nome_fantasia}/><DR label="CNPJ" value={ed.pj_cnpj?.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,"$1.$2.$3/$4-$5")||ed.pj_cnpj} mono/><DR label="Endereço PJ" value={ed.pj_endereco}/><DR label="Regime" value={ed.pj_regime}/></>
+                <><DR label="Código Parceiro" value={ed.codigo_parceiro||"—"}/><DR label="Razão Social" value={ed.pj_razao_social}/><DR label="Nome Fantasia" value={ed.pj_nome_fantasia}/><DR label="CNPJ" value={ed.pj_cnpj?.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,"$1.$2.$3/$4-$5")||ed.pj_cnpj} mono/><DR label="Telefone Empresa" value={ed.pj_telefone}/><DR label="Endereço PJ" value={ed.pj_endereco}/><DR label="Regime" value={ed.pj_regime}/></>
               )}
             </div>
           </Card>
@@ -930,7 +839,6 @@ function Detail({corban,onBack,onStatus,onDelete,onEdit,onPrint}) {
           </Card>
         </div>
       </div>
-      {/* DOCUMENTOS — sempre visível internamente */}
       <Card style={{marginTop:16,overflow:"hidden"}}>
         <SecHead icon={FileText} title={`Documentos Anexados${docs.length>0?` (${docs.length})`:""}`} sub="Clique para visualizar cada documento"/>
         <div style={{padding:18}}>
@@ -981,13 +889,15 @@ function AdminLayout({user,onLogout,children}) {
 
 const Toast=({msg,type})=>{const bg={success:T.success,error:T.danger,warn:T.warn}[type]||T.success;return<div style={{position:"fixed",top:18,right:18,background:bg,color:"#fff",padding:"11px 18px",borderRadius:11,fontWeight:600,fontSize:14,zIndex:9999,display:"flex",alignItems:"center",gap:9,boxShadow:"0 8px 24px rgba(0,0,0,.15)"}}><CheckCircle size={14}/>{msg}</div>;};
 
+// FIX 3: fichaHTML filtra valores falsos/zero no PDF
 function fichaHTML(c) {
   const statusBg  = c.status==="aprovado"?"#ECFDF5":c.status==="reprovado"?"#FEF2F2":"#FFFBEB";
   const statusClr = c.status==="aprovado"?"#059669":c.status==="reprovado"?"#DC2626":"#D97706";
   const dataEmit  = new Date().toLocaleDateString("pt-BR");
-  const dataCad   = c.created_at ? new Date(c.created_at).toLocaleDateString("pt-BR") : "—";
-  const dataDecis = c.aprovado_em ? new Date(c.aprovado_em).toLocaleString("pt-BR") : "—";
-  const parecer   = c.parecer_decisao || c.status_motivo || "";
+  const dataCad   = c.created_at?new Date(c.created_at).toLocaleDateString("pt-BR"):"—";
+  const dataDecis = c.aprovado_em?new Date(c.aprovado_em).toLocaleString("pt-BR"):"—";
+  const parecer   = c.parecer_decisao||c.status_motivo||"";
+  const val = (v,...bad) => (v&&!bad.includes(v))?v:"&#8212;";
 
   const css = [
     "body{font-family:Arial,sans-serif;color:#111;margin:0;padding:32px;font-size:13px}",
@@ -1008,79 +918,69 @@ function fichaHTML(c) {
     ".ass-nome{font-size:11px;color:#888}",
   ].join("");
 
-  // PAGE 1 — dados cadastrais
   let html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
-    + "<title>Ficha — " + (c.pf_nome||"") + "</title>"
-    + "<style>" + css + "</style></head><body>"
+    + "<title>Ficha — "+(c.pf_nome||c.pj_nome_fantasia||"")+"</title>"
+    + "<style>"+css+"</style></head><body>"
     + "<h1>&#9733; Starcard &#8212; Ficha Cadastral Correspondente Banc&#225;rio</h1>"
-    + "<p class='sub'>Emitido em " + dataEmit + " &bull; Status: <span class='badge'>" + (c.status||"pendente").toUpperCase() + "</span></p>"
+    + "<p class='sub'>Emitido em "+dataEmit+" &bull; Status: <span class='badge'>"+(c.status||"pendente").toUpperCase()+"</span></p>"
 
     + "<div class='sec'><div class='sec-t'>Representante Legal</div><table>"
-    + "<tr><td>Nome</td><td>" + (c.pf_nome||"&#8212;") + "</td></tr>"
-    + "<tr><td>CPF</td><td>" + (c.pf_cpf||"&#8212;") + "</td></tr>"
-    + "<tr><td>RG</td><td>" + (c.pf_rg||"&#8212;") + "</td></tr>"
-    + "<tr><td>Nascimento</td><td>" + (c.pf_nascimento||"&#8212;") + "</td></tr>"
-    + "<tr><td>Nome da M&#227;e</td><td>" + (c.pf_mae||"&#8212;") + "</td></tr>"
-    + "<tr><td>Sexo / Estado Civil</td><td>" + (c.pf_sexo||"&#8212;") + " / " + (c.pf_estado_civil||"&#8212;") + "</td></tr>"
-    + "<tr><td>Naturalidade</td><td>" + (c.pf_naturalidade||"&#8212;") + " " + (c.pf_naturalidade_uf||"") + "</td></tr>"
-    + "<tr><td>Endere&#231;o</td><td>" + (c.pf_endereco||"&#8212;") + " " + (c.pf_complemento||"") + "</td></tr>"
-    + "<tr><td>Cidade / UF</td><td>" + (c.pf_cidade||"&#8212;") + " / " + (c.pf_uf||"&#8212;") + "</td></tr>"
-    + "<tr><td>E-mail</td><td>" + (c.pf_email||"&#8212;") + "</td></tr>"
-    + "<tr><td>Telefone</td><td>" + (c.pf_telefone||"&#8212;") + "</td></tr>"
+    + "<tr><td>Nome</td><td>"+val(c.pf_nome,"")+"</td></tr>"
+    + "<tr><td>CPF</td><td>"+val(c.pf_cpf,"","00000000000")+"</td></tr>"
+    + "<tr><td>RG</td><td>"+val(c.pf_rg,"")+"</td></tr>"
+    + "<tr><td>Nascimento</td><td>"+val(c.pf_nascimento,"")+"</td></tr>"
+    + "<tr><td>Nome da M&#227;e</td><td>"+val(c.pf_mae,"")+"</td></tr>"
+    + "<tr><td>Sexo / Estado Civil</td><td>"+val(c.pf_sexo,"")+" / "+val(c.pf_estado_civil,"")+"</td></tr>"
+    + "<tr><td>Naturalidade</td><td>"+val(c.pf_naturalidade,"")+" "+( c.pf_naturalidade_uf||"")+"</td></tr>"
+    + "<tr><td>Endere&#231;o</td><td>"+val(c.pf_endereco,"")+" "+(c.pf_complemento||"")+"</td></tr>"
+    + "<tr><td>Cidade / UF</td><td>"+val(c.pf_cidade,"")+" / "+val(c.pf_uf,"")+"</td></tr>"
+    + "<tr><td>E-mail</td><td>"+val(c.pf_email,"","-")+"</td></tr>"
+    + "<tr><td>Telefone</td><td>"+val(c.pf_telefone,"","00000000000")+"</td></tr>"
     + "</table></div>"
 
     + "<div class='sec'><div class='sec-t'>Pessoa Jur&#237;dica</div><table>"
-    + "<tr><td>C&#243;digo Parceiro</td><td>" + (c.codigo_parceiro||"&#8212;") + "</td></tr>"
-    + "<tr><td>Raz&#227;o Social</td><td>" + (c.pj_razao_social||"&#8212;") + "</td></tr>"
-    + "<tr><td>Nome Fantasia</td><td>" + (c.pj_nome_fantasia||"&#8212;") + "</td></tr>"
-    + "<tr><td>CNPJ</td><td>" + (c.pj_cnpj||"&#8212;") + "</td></tr>"
-    + "<tr><td>Endere&#231;o PJ</td><td>" + (c.pj_endereco||"&#8212;") + "</td></tr>"
-    + "<tr><td>Regime Tribut&#225;rio</td><td>" + (c.pj_regime||"&#8212;") + "</td></tr>"
+    + "<tr><td>C&#243;digo Parceiro</td><td>"+val(c.codigo_parceiro,"")+"</td></tr>"
+    + "<tr><td>Raz&#227;o Social</td><td>"+val(c.pj_razao_social,"")+"</td></tr>"
+    + "<tr><td>Nome Fantasia</td><td>"+val(c.pj_nome_fantasia,"")+"</td></tr>"
+    + "<tr><td>CNPJ</td><td>"+val(c.pj_cnpj,"")+"</td></tr>"
+    + "<tr><td>Telefone</td><td>"+val(c.pj_telefone,"","00000000000")+"</td></tr>"
+    + "<tr><td>Endere&#231;o PJ</td><td>"+val(c.pj_endereco,"")+"</td></tr>"
+    + "<tr><td>Regime Tribut&#225;rio</td><td>"+val(c.pj_regime,"")+"</td></tr>"
     + "</table></div>"
 
     + "<div class='sec'><div class='sec-t'>Dados Banc&#225;rios</div><table>"
-    + "<tr><td>Banco</td><td>" + (c.banco_nome||"&#8212;") + "</td></tr>"
-    + "<tr><td>Ag&#234;ncia</td><td>" + (c.banco_agencia||"&#8212;") + "</td></tr>"
-    + "<tr><td>Conta / D&#237;gito</td><td>" + (c.banco_conta||"&#8212;") + "-" + (c.banco_digito||"&#8212;") + "</td></tr>"
-    + "<tr><td>Chave PIX</td><td>" + (c.banco_pix||"&#8212;") + "</td></tr>"
+    + "<tr><td>Banco</td><td>"+val(c.banco_nome,"")+"</td></tr>"
+    + "<tr><td>Ag&#234;ncia</td><td>"+val(c.banco_agencia,"")+"</td></tr>"
+    + "<tr><td>Conta / D&#237;gito</td><td>"+val(c.banco_conta,"")+" - "+val(c.banco_digito,"")+"</td></tr>"
+    + "<tr><td>Chave PIX</td><td>"+val(c.banco_pix,"")+"</td></tr>"
     + "</table></div>"
 
     + "<div class='footer'>Starcard &bull; corban@starbank.tec.br &bull; (11) 99197-3406</div>";
 
-  // PAGE 2 — parecer (somente se existir decisão)
-  if (parecer) {
+  if(parecer){
     html += "<div style='page-break-before:always;padding-top:32px'>"
       + "<h2>Parecer de An&#225;lise Cadastral</h2>"
       + "<p class='sub'>Segunda via &#8212; Uso interno Starcard</p>"
-
       + "<div class='sec'><div class='sec-t'>Identifica&#231;&#227;o do Cadastro</div><table>"
-      + "<tr><td>Correspondente</td><td>" + (c.pf_nome||"&#8212;") + "</td></tr>"
-      + "<tr><td>CPF</td><td>" + (c.pf_cpf||"&#8212;") + "</td></tr>"
-      + "<tr><td>CNPJ</td><td>" + (c.pj_cnpj||"&#8212;") + "</td></tr>"
-      + "<tr><td>Raz&#227;o Social</td><td>" + (c.pj_razao_social||"&#8212;") + "</td></tr>"
-      + "<tr><td>Data de Cadastro</td><td>" + dataCad + "</td></tr>"
+      + "<tr><td>Correspondente</td><td>"+(c.pf_nome||c.pj_nome_fantasia||"&#8212;")+"</td></tr>"
+      + "<tr><td>CPF</td><td>"+val(c.pf_cpf,"","00000000000")+"</td></tr>"
+      + "<tr><td>CNPJ</td><td>"+val(c.pj_cnpj,"")+"</td></tr>"
+      + "<tr><td>Raz&#227;o Social</td><td>"+val(c.pj_razao_social,"")+"</td></tr>"
+      + "<tr><td>Data de Cadastro</td><td>"+dataCad+"</td></tr>"
       + "</table></div>"
-
       + "<div class='sec'><div class='sec-t'>Decis&#227;o de An&#225;lise</div><table>"
-      + "<tr><td>Status</td><td><span class='badge'>" + (c.status||"pendente").toUpperCase() + "</span></td></tr>"
-      + "<tr><td>Respons&#225;vel</td><td>" + (c.aprovado_por_nome||"&#8212;") + "</td></tr>"
-      + "<tr><td>Data / Hora da Decis&#227;o</td><td>" + dataDecis + "</td></tr>"
+      + "<tr><td>Status</td><td><span class='badge'>"+(c.status||"pendente").toUpperCase()+"</span></td></tr>"
+      + "<tr><td>Respons&#225;vel</td><td>"+(c.aprovado_por_nome||"&#8212;")+"</td></tr>"
+      + "<tr><td>Data / Hora</td><td>"+dataDecis+"</td></tr>"
       + "</table></div>"
-
       + "<div class='sec'><div class='sec-t'>Parecer e Justificativa</div>"
-      + "<div class='parecer-box'>" + parecer.replace(/</g,"&lt;").replace(/>/g,"&gt;") + "</div></div>"
-
-      + "<div class='nota-box'><strong>Validade:</strong> Este parecer foi emitido no momento da an&#225;lise e integra a ficha cadastral do correspondente. "
-      + "Qualquer altera&#231;&#227;o posterior deve ser registrada no sistema com nova justificativa.</div>"
-
+      + "<div class='parecer-box'>"+parecer.replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</div></div>"
+      + "<div class='nota-box'><strong>Validade:</strong> Este parecer foi emitido no momento da an&#225;lise e integra a ficha cadastral.</div>"
       + "<div class='assinaturas'>"
-      + "<div><div class='ass-linha'>Assinatura do Respons&#225;vel pela An&#225;lise<br/>"
-      + "<span class='ass-nome'>" + (c.aprovado_por_nome||"___________________________") + "</span></div></div>"
-      + "<div><div class='ass-linha'>Visto &#8212; Gest&#227;o Starcard<br/>"
-      + "<span class='ass-nome'>___________________________</span></div></div>"
+      + "<div><div class='ass-linha'>Assinatura do Respons&#225;vel<br/><span class='ass-nome'>"+(c.aprovado_por_nome||"___________________________")+"</span></div></div>"
+      + "<div><div class='ass-linha'>Visto &#8212; Gest&#227;o Starcard<br/><span class='ass-nome'>___________________________</span></div></div>"
       + "</div>"
-
-      + "<div class='footer'>Documento de uso interno e confidencial &bull; Starcard &bull; " + dataEmit + "</div>"
+      + "<div class='footer'>Documento de uso interno &bull; Starcard &bull; "+dataEmit+"</div>"
       + "</div>";
   }
 
