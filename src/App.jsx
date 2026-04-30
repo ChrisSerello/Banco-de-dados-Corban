@@ -73,9 +73,19 @@ const fmt = {
 };
 
 async function lookupCNPJ(cnpj) {
-  const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj.replace(/\D/g,"")}`);
-  if (!r.ok) throw new Error("CNPJ não encontrado");
-  return r.json();
+  const limpo = cnpj.replace(/\D/g, "");
+  try {
+    // Dev: chama BrasilAPI direto (sem CORS no localhost)
+    // Prod: usa o proxy do Vercel (sem CORS no domínio)
+    const url = import.meta.env.DEV
+      ? `https://brasilapi.com.br/api/cnpj/v1/${limpo}`
+      : `/api/cnpj?cnpj=${limpo}`;
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    return r.json();
+  } catch {
+    return null;  // falha silenciosa — fluxo continua
+  }
 }
 
 const Spin = ({size=18,color=T.brandMid}) => <Loader2 size={size} color={color} className="spin"/>;
@@ -258,14 +268,17 @@ function Wizard({onDone,onBack}) {
     if(!form.pj_telefone) return setCE("Informe o telefone de contato.");
     setCL(true);setCE("");setCO(false);
     try {
-      const d=await lookupCNPJ(form.pj_cnpj);
-      const updated={...form,
-        pj_razao_social:d.razao_social||"",
-        pj_nome_fantasia:form.pj_nome_fantasia||d.nome_fantasia||"",
-        pj_endereco:`${d.logradouro||""}, ${d.numero||""}`.trim().replace(/,$/,""),
-        pj_uf:d.uf||"",pj_cep:d.cep?.replace(/\D/g,"").replace(/(\d{5})(\d{3})/,"$1-$2")||"",
-      };
-      setForm(updated);setCO(true);
+      const d = await lookupCNPJ(form.pj_cnpj);
+      const updated = d ? {
+        ...form,
+        pj_razao_social: d.razao_social || form.pj_razao_social,
+        pj_nome_fantasia: form.pj_nome_fantasia || d.nome_fantasia || "",
+        pj_endereco: `${d.logradouro||""}, ${d.numero||""}`.trim().replace(/,$/,""),
+        pj_uf: d.uf || "",
+        pj_cep: d.cep?.replace(/\D/g,"").replace(/(\d{5})(\d{3})/,"$1-$2") || "",
+      } : form;
+      setForm(updated);
+      if(d) setCO(true);
       setLS(true);
       const {data:lead,error}=await sb.from("corbans").insert([{
         pj_cnpj:updated.pj_cnpj.replace(/\D/g,""),
